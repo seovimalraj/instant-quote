@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+
+# debug
+npm-debug.log*
+
+# output
+out
