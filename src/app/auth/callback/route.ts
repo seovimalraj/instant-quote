@@ -1,10 +1,19 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+
+const querySchema = z.object({
+  code: z.string().optional(),
+})
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
+  const parsed = querySchema.safeParse(Object.fromEntries(requestUrl.searchParams))
+  if (!parsed.success) {
+    redirect('/login')
+  }
+  const { code } = parsed.data
 
   const supabase = createClient()
 
