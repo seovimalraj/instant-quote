@@ -7,7 +7,7 @@ import { ZodSchema } from "zod";
 export interface Field {
   name: string;
   label: string;
-  type: "text" | "number" | "select" | "checkbox";
+  type: "text" | "number" | "select" | "checkbox" | "hidden";
   options?: { value: string; label: string }[];
 }
 
@@ -65,9 +65,11 @@ export default function ModalForm({
       >
         {fields.map((field) => (
           <div key={field.name}>
-            <label className="block text-sm font-medium mb-1">
-              {field.label}
-            </label>
+            {field.type !== "hidden" && (
+              <label className="block text-sm font-medium mb-1">
+                {field.label}
+              </label>
+            )}
             {field.type === "select" && field.options ? (
               <select
                 {...register(field.name, { required: true })}
@@ -88,10 +90,12 @@ export default function ModalForm({
                 {...register(field.name, {
                   valueAsNumber: field.type === "number" ? true : undefined,
                 })}
-                className="border rounded p-2 w-full"
+                className={
+                  field.type === "hidden" ? undefined : "border rounded p-2 w-full"
+                }
               />
             )}
-            {errors[field.name] && (
+            {field.type !== "hidden" && errors[field.name] && (
               <p className="text-red-600 text-sm mt-1">
                 {(errors as any)[field.name]?.message as string}
               </p>

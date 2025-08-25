@@ -17,6 +17,10 @@ interface DataTableProps {
   schema: ZodSchema<any>;
   fields: Field[];
   filterKey?: string;
+  select?: string;
+  eqFilters?: Record<string, any>;
+  insertDefaults?: Record<string, any>;
+  initialValues?: any;
   onValidate?: (values: any, existing?: any) => Promise<string | null>;
 }
 
@@ -28,6 +32,10 @@ export default function DataTable({
   schema,
   fields,
   filterKey = "name",
+  select,
+  eqFilters,
+  insertDefaults,
+  initialValues,
   onValidate,
 }: DataTableProps) {
   const [data, setData] = useState<any[]>([]);
@@ -43,10 +51,15 @@ export default function DataTable({
   const loadData = async () => {
     let query = supabase
       .from(table)
-      .select("*", { count: "exact" })
+      .select(select || "*", { count: "exact" })
       .order(filterKey, { ascending: true })
       .ilike(filterKey, `%${filter}%`)
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    if (eqFilters) {
+      Object.entries(eqFilters).forEach(([k, v]) => {
+        query = query.eq(k, v);
+      });
+    }
     const { data, count } = await query;
     setData(data || []);
     setPageCount(count ? Math.ceil(count / PAGE_SIZE) : 0);
@@ -84,7 +97,7 @@ export default function DataTable({
       if (editing) {
         await supabase.from(table).update(parsed).eq("id", editing.id);
       } else {
-        await supabase.from(table).insert(parsed);
+        await supabase.from(table).insert({ ...(insertDefaults || {}), ...parsed });
       }
       setOpen(false);
       setEditing(null);
@@ -217,7 +230,7 @@ export default function DataTable({
           }}
           schema={schema}
           fields={fields}
-          initialValues={editing || {}}
+          initialValues={editing || initialValues || {}}
           onSubmit={handleSubmit}
           error={error}
         />
