@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:apply": "psql \"$SUPABASE_DB_URL\" -f sql/schema.sql -f sql/policies.sql",
+    "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^8.13.5",
@@ -33,7 +35,8 @@
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "tsx": "^4.20.5"
   },
   "engines": {
     "node": ">=22 <23"
