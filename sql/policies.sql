@@ -81,6 +81,24 @@ drop policy if exists rate_cards_admin_all on public.rate_cards;
 create policy rate_cards_admin_all on public.rate_cards
   for all using (public.is_admin()) with check (public.is_admin());
 
+-- Machines
+alter table public.machines enable row level security;
+drop policy if exists machines_admin_all on public.machines;
+create policy machines_admin_all on public.machines
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Machine materials
+alter table public.machine_materials enable row level security;
+drop policy if exists machine_materials_admin_all on public.machine_materials;
+create policy machine_materials_admin_all on public.machine_materials
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Machine finishes
+alter table public.machine_finishes enable row level security;
+drop policy if exists machine_finishes_admin_all on public.machine_finishes;
+create policy machine_finishes_admin_all on public.machine_finishes
+  for all using (public.is_admin()) with check (public.is_admin());
+
 -- Parts
 alter table public.parts enable row level security;
 drop policy if exists parts_owner_select on public.parts;
