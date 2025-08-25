@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { z } from "zod";
+
+const activitySchema = z.object({
+  type: z.string(),
+  email: z.string().email().optional(),
+  partId: z.string().uuid().optional(),
+  partFileUrl: z.string().url().optional(),
+  data: z.any().optional(),
+});
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body;
+  try {
+    body = activitySchema.parse(await req.json());
+  } catch (err: any) {
+    const message = err?.errors?.[0]?.message ?? "Invalid request";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
   const supabase = createClient();
   const {
     data: { user },
@@ -33,4 +48,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-

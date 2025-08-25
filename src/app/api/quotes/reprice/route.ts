@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculatePricing } from "@/lib/pricing";
+import { z } from "zod";
+
+const requestSchema = z.object({
+  quoteId: z.string().uuid(),
+});
 
 export async function POST(req: Request) {
   const supabase = createClient();
@@ -21,14 +26,12 @@ export async function POST(req: Request) {
 
   let body;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    body = requestSchema.parse(await req.json());
+  } catch (err: any) {
+    const message = err?.errors?.[0]?.message ?? "Invalid request";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-  const quoteId = body?.quoteId as string | undefined;
-  if (!quoteId) {
-    return NextResponse.json({ error: "quoteId required" }, { status: 400 });
-  }
+  const { quoteId } = body;
 
   const { data: rateCard } = await supabase
     .from("rate_cards")

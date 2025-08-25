@@ -32,6 +32,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single()
+  if (profile?.role !== 'admin' && profile?.role !== 'staff') {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/'
+    return NextResponse.redirect(redirectUrl)
+  }
+
   return res
 }
 
