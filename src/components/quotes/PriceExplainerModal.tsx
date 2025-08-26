@@ -1,33 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import LineItemsTable from "./LineItemsTable";
+import TotalBar from "./TotalBar";
+import Badges from "./Badges";
 
-// Modal to display a pricing breakdown and total from a JSON object.
-interface PriceBreakdown {
-  material?: number;
-  machining?: number;
-  finish?: number;
-  setup?: number;
-  tolerance?: number;
-  overhead?: number;
-  margin?: number;
-  tax?: number;
-  ship?: number;
-  carbon_offset?: number;
+interface BreakdownJson {
+  breakdown: Record<string, number>;
+  total?: number;
+  meta?: Record<string, any>;
 }
 
 interface Props {
-  breakdownJson: PriceBreakdown;
+  breakdownJson: BreakdownJson;
 }
 
 export default function PriceExplainerModal({ breakdownJson }: Props) {
   const [open, setOpen] = useState(false);
-
-  const entries = Object.entries(breakdownJson).filter(
-    ([, value]) => typeof value === "number"
-  );
-
-  const total = entries.reduce((sum, [, value]) => sum + (value || 0), 0);
+  const total =
+    breakdownJson.total ??
+    Object.values(breakdownJson.breakdown).reduce((s, v) => s + v, 0);
 
   return (
     <>
@@ -42,18 +34,9 @@ export default function PriceExplainerModal({ breakdownJson }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-md p-6 w-full max-w-md shadow">
             <h2 className="text-lg font-semibold mb-4">Price Breakdown</h2>
-            <ul className="space-y-1 text-sm">
-              {entries.map(([key, value]) => (
-                <li key={key} className="flex justify-between">
-                  <span className="capitalize">{key.replace(/_/g, " ")}</span>
-                  <span>${value?.toFixed(2)}</span>
-                </li>
-              ))}
-              <li className="flex justify-between font-medium border-t pt-1 mt-2">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </li>
-            </ul>
+            <Badges meta={breakdownJson.meta} />
+            <LineItemsTable breakdown={breakdownJson.breakdown} />
+            <TotalBar total={total} />
             <div className="mt-4 text-right">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded"
@@ -68,4 +51,3 @@ export default function PriceExplainerModal({ breakdownJson }: Props) {
     </>
   );
 }
-

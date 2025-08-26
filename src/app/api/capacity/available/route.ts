@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addDays, formatISO } from "date-fns";
+import { z } from "zod";
+import { available } from "@/lib/capacity";
 
-// Provides upcoming available capacity dates for a machine.
+const querySchema = z.object({
+  minutes: z.coerce.number().min(0),
+});
+
+// Returns earliest available dates for standard and expedite lead times.
 export async function GET(req: NextRequest) {
-  const machineId = req.nextUrl.searchParams.get("machineId");
-  if (!machineId) {
-    return NextResponse.json({ error: "machineId required" }, { status: 400 });
+  const params = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const parsed = querySchema.safeParse(params);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "minutes required" }, { status: 400 });
   }
-
-  const today = new Date();
-  const standard = Array.from({ length: 5 }, (_, i) =>
-    formatISO(addDays(today, i + 3), { representation: "date" })
-  );
-  const expedite = Array.from({ length: 5 }, (_, i) =>
-    formatISO(addDays(today, i + 1), { representation: "date" })
-  );
-
-  return NextResponse.json({ machineId, standard, expedite });
+  const res = available(parsed.data.minutes);
+  return NextResponse.json(res);
 }
-
