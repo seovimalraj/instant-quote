@@ -18,22 +18,17 @@ export const geometrySchema = z.object({
   tap_drill_mismatch: z.boolean().optional(),
 });
 
-export const pricingInputSchema = z.object({
-  process: z.enum([
-    "cnc_milling",
-    "cnc_turning",
-    "sheet_metal",
-    "3dp_fdm",
-    "3dp_sla",
-    "3dp_sls",
-    "injection_proto",
-  ]),
+const baseItemSchema = z.object({
+  process_kind: z.enum(["cnc", "injection", "casting"]),
+  process: z.enum(["cnc", "injection", "casting"]).optional(),
   quantity: z.number().int().positive(),
-  material: z.object({
-    density_kg_m3: z.number().positive().optional(),
-    cost_per_kg: z.number().positive(),
-    machinability_factor: z.number().positive().optional(),
-  }),
+  material: z
+    .object({
+      density_kg_m3: z.number().positive().optional(),
+      cost_per_kg: z.number().positive().optional(),
+      machinability_factor: z.number().positive().optional(),
+    })
+    .optional(),
   finish: z
     .object({
       cost_per_m2: z.number().nonnegative().optional(),
@@ -45,24 +40,32 @@ export const pricingInputSchema = z.object({
       cost_multiplier: z.number().positive().optional(),
     })
     .optional(),
-  geometry: geometrySchema,
   lead_time: z.enum(["standard", "expedite"]).default("standard"),
-  rate_card: z.object({
-    three_axis_rate_per_min: z.number().nonnegative().optional(),
-    five_axis_rate_per_min: z.number().nonnegative().optional(),
-    turning_rate_per_min: z.number().nonnegative().optional(),
-    sheet_setup_fee: z.number().nonnegative().optional(),
-    bend_rate_per_bend: z.number().nonnegative().optional(),
-    laser_rate_per_min: z.number().nonnegative().optional(),
-    fdm_rate_per_cm3: z.number().nonnegative().optional(),
-    sla_rate_per_cm3: z.number().nonnegative().optional(),
-    sls_rate_per_cm3: z.number().nonnegative().optional(),
-    injection_mold_setup: z.number().nonnegative().optional(),
-    injection_part_rate: z.number().nonnegative().optional(),
-    tax_rate: z.number().nonnegative().optional(),
-    shipping_flat: z.number().nonnegative().optional(),
-  }),
+  geometry: geometrySchema,
+  rate_card: z
+    .object({
+      three_axis_rate_per_min: z.number().nonnegative().optional(),
+      five_axis_rate_per_min: z.number().nonnegative().optional(),
+      turning_rate_per_min: z.number().nonnegative().optional(),
+      sheet_setup_fee: z.number().nonnegative().optional(),
+      bend_rate_per_bend: z.number().nonnegative().optional(),
+      laser_rate_per_min: z.number().nonnegative().optional(),
+      fdm_rate_per_cm3: z.number().nonnegative().optional(),
+      sla_rate_per_cm3: z.number().nonnegative().optional(),
+      sls_rate_per_cm3: z.number().nonnegative().optional(),
+      injection_mold_setup: z.number().nonnegative().optional(),
+      injection_part_rate: z.number().nonnegative().optional(),
+      tax_rate: z.number().nonnegative().optional(),
+      shipping_flat: z.number().nonnegative().optional(),
+    })
+    .optional(),
 });
+
+export const pricingInputSchema = baseItemSchema.transform((d) => ({
+  ...d,
+  process: d.process ?? d.process_kind,
+}));
 
 export type Geometry = z.infer<typeof geometrySchema>;
 export type PricingInput = z.infer<typeof pricingInputSchema>;
+
