@@ -1,77 +1,53 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import InstantQuoteForm from "@/components/quotes/InstantQuoteForm";
-import { createClient } from "@/lib/supabase/server";
 
 interface Props {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
-export default async function InstantQuotePage({ searchParams }: Props) {
+export default function InstantQuotePage({ searchParams }: Props) {
   const partId = typeof searchParams.partId === "string" ? searchParams.partId : undefined;
-  if (!partId) {
-    return (
-      <div className="max-w-2xl mx-auto py-10">
-        <h1 className="text-2xl font-semibold mb-6">Instant Quote</h1>
-        <p className="text-sm text-gray-500">No part selected.</p>
-      </div>
-    );
-  }
+  const quoteId = typeof searchParams.quoteId === "string" ? searchParams.quoteId : undefined;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const supabase = createClient();
-  const { data: part } = await supabase
-    .from("parts")
-    .select("*")
-    .eq("id", partId)
-    .single();
-  if (!part) {
-    return (
-      <div className="max-w-2xl mx-auto py-10">
-        <h1 className="text-2xl font-semibold mb-6">Instant Quote</h1>
-        <p className="text-sm text-gray-500">Part not found.</p>
-      </div>
-    );
-  }
-
-  const [materials, finishes, tolerances, machines, rateCard] = await Promise.all([
-    supabase
-      .from("materials")
-      .select("id,name,density_kg_m3,cost_per_kg,machinability_factor")
-      .eq("process_code", part.process_code)
-      .eq("is_active", true),
-    supabase
-      .from("finishes")
-      .select("id,name,cost_per_m2,setup_fee")
-      .eq("process_code", part.process_code)
-      .eq("is_active", true),
-    supabase
-      .from("tolerances")
-      .select("id,name,cost_multiplier")
-      .eq("process_code", part.process_code)
-      .eq("is_active", true),
-    supabase
-      .from("machines")
-      .select("*")
-      .eq("process_code", part.process_code)
-      .eq("is_active", true),
-    supabase
-      .from("rate_cards")
-      .select("*")
-      .eq("is_active", true)
-      .limit(1)
-      .single(),
-  ]);
+  const requestQuote = async () => {
+    if (!quoteId) return;
+    setLoading(true);
+    const res = await fetch("/api/quotes/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quote_id: quoteId }),
+    });
+    setLoading(false);
+    if (res.ok) {
+      alert("Quote requested successfully");
+      router.push(`/quote/${quoteId}`);
+    } else {
+      console.error(await res.json());
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Instant Quote</h1>
-      <InstantQuoteForm
-        part={part}
-        materials={materials.data ?? []}
-        finishes={finishes.data ?? []}
-        tolerances={tolerances.data ?? []}
-        machines={machines.data ?? []}
-        rateCard={rateCard.data ?? {}}
-      />
+      {partId ? (
+        <InstantQuoteForm partId={partId} />
+      ) : (
+        <p className="text-sm text-gray-500">No part selected.</p>
+      )}
+      <div className="mt-6">
+        <button
+          onClick={requestQuote}
+          disabled={!quoteId || loading}
+          className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
+        >
+          Request Quote
+        </button>
+      </div>
     </div>
   );
 }
-
