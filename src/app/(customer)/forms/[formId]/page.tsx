@@ -1,16 +1,16 @@
+import type { PageProps } from "next";
 import DynamicForm from "@/components/forms/DynamicForm";
 import { createClient } from "@/lib/supabase/server";
 
-interface Props {
-  params: { formId: string };
-}
-
-export default async function FormPage({ params }: Props) {
+export default async function FormPage(
+  props: PageProps<"/forms/[formId]">
+) {
+  const { formId } = await props.params;
   const supabase = await createClient();
   const { data: form } = await supabase
     .from("custom_forms")
     .select("id,name,description,schema")
-    .eq("id", params.formId)
+    .eq("id", formId)
     .single();
 
   async function submit(formData: FormData) {
@@ -21,7 +21,7 @@ export default async function FormPage({ params }: Props) {
     } = await supabase.auth.getUser();
     const entries = Object.fromEntries(formData.entries());
     await supabase.from("custom_form_responses").insert({
-      form_id: params.formId,
+      form_id: formId,
       respondent_id: user?.id,
       data: entries,
     });
