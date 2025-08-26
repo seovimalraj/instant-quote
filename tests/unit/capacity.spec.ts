@@ -1,5 +1,9 @@
+import { describe, it, expect, vi } from 'vitest';
 import { minutesNeededForItem, earliestSlot } from '../../src/lib/capacity';
-import { vi } from 'vitest';
+
+let order: any;
+let mockClient: any;
+vi.mock('../../src/lib/supabase/server', () => ({ createClient: () => mockClient }));
 
 describe('capacity utilities', () => {
   it('extracts reserved minutes from item', () => {
@@ -9,7 +13,7 @@ describe('capacity utilities', () => {
   });
 
   it('finds earliest slot with available capacity', async () => {
-    const order = vi.fn().mockResolvedValue({
+    order = vi.fn().mockResolvedValue({
       data: [
         { day: '2024-01-01', minutes_available: 480, minutes_reserved: 470 },
         { day: '2024-01-02', minutes_available: 480, minutes_reserved: 480 },
@@ -17,7 +21,7 @@ describe('capacity utilities', () => {
       ],
       error: null,
     });
-    const mockClient = {
+    mockClient = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({

@@ -7,6 +7,7 @@ The seed scripts provide a minimal dataset for demonstrating the quoting and ord
 - **Materials:** Aluminum 6061 (metal), Stainless Steel 304 (alloy), Nylon 12 (resin), Zamak 3 (alloy)
 - **Finishes:** Anodized, Polished, As Cast
 - **Tolerances:** Standard and High for milling, Standard for turning
+- **Certifications:** ISO9001, AS9100
 - **Rate Card:** US-East region with USD pricing
 
 ## Machines
@@ -17,6 +18,9 @@ The seed scripts provide a minimal dataset for demonstrating the quoting and ord
 - Buhler Casting Line – die casting
 
 Each machine is linked to compatible materials/finishes and given 30 days of 8‑hour capacity.
+
+Additional DFM seed data lives in `sql/seed_dfm.sql` and includes sample certifications,
+a demo part and one day of machine capacity.
 
 ## Users and Customer
 - `admin@example.com` – administrator

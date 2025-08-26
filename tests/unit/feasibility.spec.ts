@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { checkFeasibility } from '../../src/lib/feasibility';
 import type { PricingInput } from '../../src/lib/validators/pricing';
 import type { Machine } from '../../src/lib/validators/machines';
@@ -6,7 +7,7 @@ describe('feasibility checks', () => {
   const baseItem: PricingInput = {
     process_kind: 'injection',
     quantity: 10,
-    geometry: { volume_mm3: 1, surface_area_mm2: 1, bbox: [100,100,10] },
+    geometry: { volume_mm3: 1, surface_area_mm2: 1, bbox: [100,100,10] as [number, number, number] },
   } as any;
 
   const machine: Machine = {
