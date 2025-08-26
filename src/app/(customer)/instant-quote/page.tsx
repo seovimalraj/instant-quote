@@ -7,6 +7,7 @@ import PriceExplainerModal, { BreakdownJson } from "@/components/quotes/PriceExp
 import Badges from "@/components/quotes/Badges";
 import { PricingResult } from "@/lib/pricing";
 import { formatCurrency } from "@/components/quotes/BreakdownRow";
+import { LeadTime, normalizeLeadTime } from "@/lib/uiTypes";
 
 interface Props {
   searchParams: { [key: string]: string | string[] | undefined };
@@ -31,7 +32,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
   const [price, setPrice] = useState<PricingResult | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownJson | null>(null);
   const [processKind, setProcessKind] = useState<string>("");
-  const [leadTime, setLeadTime] = useState<"standard" | "expedite">("standard");
+  const [leadTime, setLeadTime] = useState<LeadTime>("standard");
   const [toleranceLabel, setToleranceLabel] = useState<string | undefined>(undefined);
 
   const handlePricing = (info: {
@@ -44,7 +45,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
     setPrice(info.price);
     setBreakdown(info.breakdown);
     setProcessKind(info.processKind);
-    setLeadTime(info.leadTime);
+    setLeadTime(normalizeLeadTime(info.leadTime));
     setToleranceLabel(info.toleranceLabel);
   };
 

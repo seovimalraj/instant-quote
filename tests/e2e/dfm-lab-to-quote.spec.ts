@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { normalizeCert } from '@/lib/normalize';
 
 test.skip(process.env.PLAYWRIGHT !== '1', 'Skipped unless PLAYWRIGHT=1');
 
@@ -7,7 +8,8 @@ test('DFM lab to instant quote flow', async ({ page }) => {
   await page.getByRole('button', { name: 'Upload Part' }).setInputFiles('fixtures/parts/plate_10x10x2.stl');
   await page.getByLabel('Material').selectOption('Aluminum 6061');
   await page.getByLabel('Tolerance').selectOption('ISO 2768-m');
-  await page.getByLabel('Certifications').check('ISO 9001');
+  const iso = normalizeCert('ISO 9001');
+  await page.locator(`input[value="${iso}"]`).check();
   await page.getByRole('button', { name: 'Analyze' }).click();
   await expect(page.getByText('DFM Report')).toBeVisible();
   await page.getByRole('button', { name: 'Generate QAP' }).click();

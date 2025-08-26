@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export async function loadOBJ(url: string): Promise<THREE.BufferGeometry> {
   const loader = new OBJLoader();
@@ -16,7 +16,8 @@ export async function loadOBJ(url: string): Promise<THREE.BufferGeometry> {
             geometries.push(geom);
           }
         });
-        const geometry = BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+        const merged = BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+        const geometry = BufferGeometryUtils.mergeVertices(merged);
         geometry.computeVertexNormals();
         resolve(geometry);
       },

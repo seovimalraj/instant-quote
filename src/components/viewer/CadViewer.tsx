@@ -37,6 +37,7 @@ export function CadViewer({
   const screenshotRef = useRef<() => void>();
 
   useEffect(() => {
+    if (!fileUrl) return;
     const ext = fileName.split('.').pop()?.toLowerCase();
     if (!ext) return;
     if (ext === 'sldprt') {
@@ -104,6 +105,10 @@ export function CadViewer({
     }, [camera, gl]);
     return null;
   };
+
+  if (!fileUrl) {
+    return null;
+  }
 
   return (
     <div className="relative w-full h-full">

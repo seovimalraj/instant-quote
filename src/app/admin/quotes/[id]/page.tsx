@@ -85,30 +85,33 @@ export default async function QuoteDetailPage({ params }: Props) {
     const leadTime =
       item.lead_time_days && item.lead_time_days <= 3 ? "expedite" : "standard";
 
-    machinesByItem[item.id] = feasible.map((m: any) => {
-      const rateCardForItem: any = { ...(rateCard || {}) };
-      const rateKeyMap: Record<string, string> = {
-        cnc_milling: "three_axis_rate_per_min",
-        cnc_turning: "turning_rate_per_min",
-        sheet_metal: "laser_rate_per_min",
-      };
-      const rateKey = rateKeyMap[item.process_code as keyof typeof rateKeyMap];
-      if (rateKey) {
-        rateCardForItem[rateKey] = m.rate_per_min;
-      }
-      const pricing = await calculatePricing({
-        process_kind: normalizeProcessKind(item.process_code as string),
-        quantity: item.quantity,
-        material: material!,
-        finish: finish || undefined,
-        tolerance: tolerance || undefined,
-        geometry,
-        lead_time: leadTime,
-        rate_card: rateCardForItem,
-      });
-      const total = (pricing.total + (m.setup_fee ?? 0)) * (1 + (m.margin_pct ?? 0));
-      return { id: m.id, name: m.name, total };
-    });
+    machinesByItem[item.id] = await Promise.all(
+      feasible.map(async (m: any) => {
+        const rateCardForItem: any = { ...(rateCard || {}) };
+        const rateKeyMap: Record<string, string> = {
+          cnc_milling: "three_axis_rate_per_min",
+          cnc_turning: "turning_rate_per_min",
+          sheet_metal: "laser_rate_per_min",
+        };
+        const rateKey = rateKeyMap[item.process_code as keyof typeof rateKeyMap];
+        if (rateKey) {
+          rateCardForItem[rateKey] = m.rate_per_min;
+        }
+        const pricing = await calculatePricing({
+          process_kind: normalizeProcessKind(item.process_code as string),
+          quantity: item.quantity,
+          material: material!,
+          finish: finish || undefined,
+          tolerance: tolerance || undefined,
+          geometry,
+          lead_time: leadTime,
+          rate_card: rateCardForItem,
+        });
+        const total =
+          (pricing.total + (m.setup_fee ?? 0)) * (1 + (m.margin_pct ?? 0));
+        return { id: m.id, name: m.name, total };
+      }),
+    );
   }
 
   const origin =
