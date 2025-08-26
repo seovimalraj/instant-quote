@@ -82,22 +82,23 @@ function ClientPage() {
       <div>
         <h1 className="text-2xl font-semibold mb-4">Certifications</h1>
         <DataTable
-          table="certifications"
+          endpoint="/api/certifications"
           columns={certColumns}
           schema={certSchema}
           fields={certFields}
           filterKey="name"
+          idInQuery
         />
       </div>
       <div>
         <h2 className="text-xl font-semibold mb-4">Vendor Certifications</h2>
         <DataTable
-          table="vendor_certifications"
+          endpoint="/api/vendor-certifications"
           columns={vendorCertColumns}
           schema={vendorCertSchema}
           fields={vendorCertFields}
           filterKey="profiles.full_name"
-          select="id, vendor_id, certification_id, is_active, profiles(full_name), certifications(name)"
+          idInQuery
         />
       </div>
     </div>
