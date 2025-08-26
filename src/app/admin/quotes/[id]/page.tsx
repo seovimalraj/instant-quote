@@ -144,17 +144,7 @@ export default async function QuoteDetailPage({ params }: Props) {
   async function acceptQuote() {
     "use server";
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     await supabase.from("quotes").update({ status: "accepted" }).eq("id", params.id);
-    if (user) {
-      await supabase.from("activities").insert({
-        actor_id: user.id,
-        quote_id: params.id,
-        type: "quote_accepted",
-      });
-    }
     await fetch(`${origin}/api/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

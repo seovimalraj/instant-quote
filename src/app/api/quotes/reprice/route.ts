@@ -151,8 +151,6 @@ export async function POST(req: Request) {
     const itemTotal = itemSubtotal + itemTax + itemShipping;
 
     const breakdown: any = { ...pricing.breakdownJson, overrides: appliedOverrides };
-    if (setupFee) breakdown.setup_fee = setupFee;
-    if (marginPct) breakdown.margin_pct = marginPct;
 
     await supabase
       .from("quote_items")
