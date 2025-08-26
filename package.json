@@ -68,4 +68,11 @@
   "overrides": {
     "cookie": "^0.7.2"
   }
+  // package.json
+{
+  "scripts": {
+    "doctor": "node scripts/diagnostics.mjs",
+    "verify:strict": "npm run lint && npm run typecheck && npm run test:unit && next build --no-lint --show-error-details"
+  }
+
 }
