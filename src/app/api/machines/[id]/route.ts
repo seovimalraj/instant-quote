@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -23,7 +23,7 @@ interface Params {
   params: { id: string };
 }
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(_req: NextRequest, { params }: Params) {
   await requireAdmin();
   const supabase = createClient();
   const { data, error } = await supabase
@@ -37,7 +37,7 @@ export async function GET(_req: Request, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function PUT(req: Request, { params }: Params) {
+export async function PUT(req: NextRequest, { params }: Params) {
   await requireAdmin();
   let body;
   try {
@@ -59,7 +59,7 @@ export async function PUT(req: Request, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: NextRequest, { params }: Params) {
   await requireAdmin();
   const supabase = createClient();
   const { error } = await supabase.from("machines").delete().eq("id", params.id);
