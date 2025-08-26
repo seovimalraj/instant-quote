@@ -1,18 +1,26 @@
+// src/app/(customer)/order/page.tsx (or /orders/page.tsx if that's your route)
+export const runtime = "nodejs";
+
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-interface Props {
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+type SearchParams = Record<string, string | string[] | undefined>;
 
 const PAGE_SIZE = 10;
 
-export default async function OrdersPage({ searchParams }: Props) {
+export default async function OrdersPage(props: {
+  params?: any | Promise<any>;
+  searchParams?: SearchParams | Promise<SearchParams>;
+}) {
+  const searchParams: SearchParams = (await props?.searchParams) ?? {};
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // If you prefer redirect, use requireAuth() earlier or Next redirect() here
     return <div className="p-10">Please log in.</div>;
   }
 
@@ -22,7 +30,12 @@ export default async function OrdersPage({ searchParams }: Props) {
     .eq("owner_id", user.id)
     .single();
 
-  const page = Number(searchParams.page ?? "1");
+  // normalize page query (string | string[] | undefined)
+  const rawPage = searchParams.page;
+  const pageStr =
+    typeof rawPage === "string" ? rawPage : Array.isArray(rawPage) ? rawPage[0] : "1";
+  const page = Math.max(1, Number.isFinite(Number(pageStr)) ? Number(pageStr) : 1);
+
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
@@ -39,9 +52,9 @@ export default async function OrdersPage({ searchParams }: Props) {
       <ul className="space-y-2">
         {orders?.map((o) => (
           <li key={o.id} className="border p-4 rounded">
-            <a href={`/order/${o.id}`} className="text-blue-600 underline">
+            <Link href={`/order/${o.id}`} className="text-blue-600 underline">
               {o.id}
-            </a>
+            </Link>
             <p className="text-sm">Status: {o.status}</p>
             <p className="text-sm">Total: {o.total}</p>
           </li>
@@ -53,4 +66,3 @@ export default async function OrdersPage({ searchParams }: Props) {
     </div>
   );
 }
-
