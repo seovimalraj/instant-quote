@@ -4,7 +4,7 @@ create table if not exists public.machines (
   name text not null,
   process_code text not null references public.processes(code),
   axis_count int default 3,
-  envelope_mm jsonb, -- {x:..., y:..., z:...}
+  envelope_mm jsonb,
   rate_per_min numeric not null,
   setup_fee numeric default 0,
   overhead_multiplier numeric default 1.0,
@@ -17,15 +17,13 @@ create table if not exists public.machines (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
-
 create table if not exists public.machine_materials (
   id uuid primary key default gen_random_uuid(),
   machine_id uuid references public.machines(id) on delete cascade,
   material_id uuid references public.materials(id) on delete cascade,
-  material_rate_multiplier numeric default 1.0, -- extra penalty for hard-to-cut materials
+  material_rate_multiplier numeric default 1.0,
   unique (machine_id, material_id)
 );
-
 create table if not exists public.machine_finishes (
   id uuid primary key default gen_random_uuid(),
   machine_id uuid references public.machines(id) on delete cascade,
@@ -33,12 +31,7 @@ create table if not exists public.machine_finishes (
   finish_rate_multiplier numeric default 1.0,
   unique (machine_id, finish_id)
 );
-
--- geometry helpers already exist on parts, ensure indexes
 create index if not exists idx_parts_process on public.parts(process_code);
 create index if not exists idx_quote_items_quote on public.quote_items(quote_id);
-
--- quotes: add machine selection
 alter table public.quote_items add column if not exists machine_id uuid references public.machines(id);
-
 commit;
