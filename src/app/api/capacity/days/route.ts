@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   }
   const start = new Date(`${month}-01`);
   const end = endOfMonth(start);
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("capacity_days")
     .select("*")
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("capacity_days")
     .upsert(
@@ -82,7 +82,7 @@ export async function PATCH(req: Request) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existing, error: exErr } = await supabase
     .from("capacity_days")
     .select("minutes_available, minutes_reserved")

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existing, error: exErr } = await supabase
     .from("machine_capacity_days")
     .select("minutes_available, minutes_reserved")

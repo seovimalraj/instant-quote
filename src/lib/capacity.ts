@@ -38,7 +38,7 @@ export async function earliestSlot({
 }: EarliestSlotArgs): Promise<{ date: string; minutes: number } | null> {
   const start = startDate ? new Date(startDate) : new Date();
   const end = addDays(start, maxDays);
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machine_capacity_days")
     .select("day, minutes_available, minutes_reserved")

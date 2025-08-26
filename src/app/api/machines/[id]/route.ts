@@ -25,7 +25,7 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machines")
     .select("*")
@@ -46,7 +46,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machines")
     .update(body)
@@ -61,7 +61,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("machines").delete().eq("id", params.id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

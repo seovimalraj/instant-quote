@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page") || "0", 10);
   const PAGE_SIZE = 10;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, count, error } = await supabase
     .from("machines")
     .select("*", { count: "exact" })
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machines")
     .insert(body)

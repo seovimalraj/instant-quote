@@ -6,7 +6,7 @@ import { createSignedUploadUrl } from "@/lib/storage";
 import { uploadPartSchema } from "@/lib/validators/upload";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

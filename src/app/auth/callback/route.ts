@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   }
   const { code } = parsed.data
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)

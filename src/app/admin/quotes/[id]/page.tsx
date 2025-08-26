@@ -9,7 +9,7 @@ interface Props {
 
 export default async function QuoteDetailPage({ params }: Props) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: quote } = await supabase
     .from("quotes")
     .select("*")
@@ -147,7 +147,7 @@ export default async function QuoteDetailPage({ params }: Props) {
 
   async function acceptQuote() {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.from("quotes").update({ status: "accepted" }).eq("id", params.id);
     await fetch(`${origin}/api/orders`, {
       method: "POST",

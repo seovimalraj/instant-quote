@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const message = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

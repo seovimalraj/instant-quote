@@ -13,7 +13,7 @@ export default async function ShareQuotePage({ params, searchParams }: Props) {
     notFound();
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: share } = await supabase
     .from("quote_share_tokens")
     .select("quote_id,expires_at")

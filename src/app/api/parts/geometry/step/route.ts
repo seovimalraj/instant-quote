@@ -4,7 +4,7 @@ import { stepRequestSchema, StepRequest } from "@/lib/validators/step";
 import { maxProjectedArea } from "@/lib/geometry/projectedArea";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

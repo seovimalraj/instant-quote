@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AbandonedAdminPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: abandoned } = await supabase
     .from("abandoned_quotes")
     .select("id,email,created_at")
@@ -12,7 +12,7 @@ export default async function AbandonedAdminPage() {
   async function convert(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data } = await supabase
       .from("abandoned_quotes")
       .select("email")
