@@ -10,12 +10,9 @@ const schema = z.object({
   is_active: z.boolean().optional(),
 });
 
-interface Params {
-  params: { id: string };
-}
-
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
   const searchParams = req.nextUrl.searchParams;
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page") || "0", 10);
@@ -26,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)", {
       count: "exact",
     })
-    .eq("machine_id", params.id)
+    .eq("machine_id", id)
     .order("finishes.name")
     .ilike("finishes.name", `%${search}%`)
     .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -36,8 +33,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   return NextResponse.json({ data, count });
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
   let body;
   try {
     body = schema.parse(await req.json());
@@ -48,7 +46,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("machine_finishes")
-    .insert({ ...body, machine_id: params.id })
+    .insert({ ...body, machine_id: id })
     .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)")
     .single();
   if (error) {
@@ -57,11 +55,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function PUT(req: NextRequest, { params }: Params) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
   const searchParams = req.nextUrl.searchParams;
-  const id = searchParams.get("id");
-  if (!id) {
+  const recordId = searchParams.get("id");
+  if (!recordId) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
   let body;
@@ -75,8 +74,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from("machine_finishes")
     .update(body)
-    .eq("id", id)
-    .eq("machine_id", params.id)
+    .eq("id", recordId)
+    .eq("machine_id", id)
     .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)")
     .single();
   if (error) {
@@ -85,19 +84,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
   const searchParams = req.nextUrl.searchParams;
-  const id = searchParams.get("id");
-  if (!id) {
+  const recordId = searchParams.get("id");
+  if (!recordId) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
   const supabase = await createClient();
   const { error } = await supabase
     .from("machine_finishes")
     .delete()
-    .eq("id", id)
-    .eq("machine_id", params.id);
+    .eq("id", recordId)
+    .eq("machine_id", id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
