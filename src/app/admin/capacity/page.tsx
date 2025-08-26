@@ -130,19 +130,86 @@ function ClientPage() {
           Add Capacity
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-2">
-        {eachDayOfInterval({ start: month, end: endOfMonth(month) }).map((d) => {
-          const key = format(d, "yyyy-MM-dd");
-          const cap = days[key];
-          return (
-            <div key={key} className="border p-2 text-sm">
-              <p className="font-semibold">{format(d, "d")}</p>
-              <p>A: {cap?.minutes_available ?? 0}</p>
-              <p>R: {cap?.minutes_reserved ?? 0}</p>
-            </div>
-          );
-        })}
-      </div>
+      <table className="min-w-full border">
+        <thead>
+          <tr>
+            <th className="border px-2 py-1 text-left">Day</th>
+            <th className="border px-2 py-1 text-left">Minutes Available</th>
+            <th className="border px-2 py-1 text-left">Minutes Reserved</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eachDayOfInterval({ start: month, end: endOfMonth(month) }).map((d) => {
+            const key = format(d, "yyyy-MM-dd");
+            const cap = days[key] || {};
+            return (
+              <tr key={key}>
+                <td className="border px-2 py-1">{key}</td>
+                <td className="border px-2 py-1">
+                  <input
+                    type="number"
+                    className="w-24 border px-1 py-0.5"
+                    value={cap.minutes_available ?? ""}
+                    onChange={(e) =>
+                      setDays((prev) => ({
+                        ...prev,
+                        [key]: {
+                          ...cap,
+                          minutes_available: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    onBlur={(e) => {
+                      const val = Number(e.target.value) || 0;
+                      const payload = {
+                        machine_id: machineId,
+                        day: key,
+                        minutes_available: val,
+                        minutes_reserved: cap.minutes_reserved || 0,
+                      };
+                      fetch("/api/capacity/days", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                      });
+                    }}
+                  />
+                </td>
+                <td className="border px-2 py-1">
+                  <input
+                    type="number"
+                    className="w-24 border px-1 py-0.5"
+                    value={cap.minutes_reserved ?? ""}
+                    onChange={(e) =>
+                      setDays((prev) => ({
+                        ...prev,
+                        [key]: {
+                          ...cap,
+                          minutes_reserved: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    onBlur={(e) => {
+                      const val = Number(e.target.value) || 0;
+                      const payload = {
+                        machine_id: machineId,
+                        day: key,
+                        minutes_available: cap.minutes_available || 0,
+                        minutes_reserved: val,
+                      };
+                      fetch("/api/capacity/days", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                      });
+                    }}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

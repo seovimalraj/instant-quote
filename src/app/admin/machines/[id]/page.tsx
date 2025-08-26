@@ -139,6 +139,9 @@ function ClientPage({ machine }: { machine: any }) {
   return (
     <div className="max-w-5xl mx-auto py-10 space-y-10">
       <h1 className="text-2xl font-semibold mb-4">{machine.name}</h1>
+      <p className="text-sm mb-4">
+        ITAR Certified: {machine.is_itar_certified ? "Yes" : "No"}
+      </p>
       <div>
         <h2 className="text-xl font-semibold mb-4">Materials</h2>
         <DataTable
