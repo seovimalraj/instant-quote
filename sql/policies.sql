@@ -117,6 +117,7 @@ create policy parts_admin_all on public.parts
 -- Quotes
 alter table public.quotes enable row level security;
 drop policy if exists quotes_access on public.quotes;
+-- allow creators, customer owners, admins, or shared link token holders to read quotes
 create policy quotes_access on public.quotes
   for select using (
     public.is_admin() or created_by = auth.uid() or
