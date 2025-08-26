@@ -2,6 +2,9 @@
   "name": "instant-quote",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,11 +14,12 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run typecheck && npm run test:unit && npm run build",
+    "verify:strict": "npm run lint && npm run typecheck && npm run test:unit && next build --no-lint --show-error-details",
+    "doctor": "node scripts/diagnostics.mjs",
     "db:apply": "psql \"$SUPABASE_DB_URL\" -f sql/schema.sql -f sql/policies.sql",
     "db:seed": "tsx db/seed.ts",
     "postinstall": "node scripts/postinstall.cjs",
-    "verify:view": "npm run build",
-    "codemod:cookies": "node --experimental-modules scripts/codemods/next15-cookies.mjs",
+    "codemod:cookies": "node scripts/codemods/next15-cookies.mjs",
     "codemod:runtime": "node scripts/codemods/add-node-runtime.mjs"
   },
   "dependencies": {
@@ -26,7 +30,7 @@
     "date-fns": "^2.30.0",
     "dxf-parser": "^1.1.2",
     "lucide-react": "^0.323.0",
-    "next": "latest",
+    "next": "15.5.0",
     "occt-import-js": "^0.0.23",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -46,8 +50,8 @@
     "@types/react-dom": "^18.2.17",
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.16",
-    "eslint": "latest",
-    "eslint-config-next": "14.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "15.5.0",
     "glob": "^10.3.10",
     "jsdom": "latest",
     "postcss": "^8.4.31",
@@ -57,9 +61,6 @@
     "typescript": "^5.4.2",
     "vitest": "latest"
   },
-  "engines": {
-    "node": ">=22 <23"
-  },
   "eslintConfig": {
     "extends": [
       "next/core-web-vitals"
@@ -68,11 +69,4 @@
   "overrides": {
     "cookie": "^0.7.2"
   }
-  // package.json
-{
-  "scripts": {
-    "doctor": "node scripts/diagnostics.mjs",
-    "verify:strict": "npm run lint && npm run typecheck && npm run test:unit && next build --no-lint --show-error-details"
-  }
-
 }
