@@ -7,6 +7,8 @@ interface MarkQuotePanelProps {
   currentStatus: string;
   allowedStatuses?: string[];
   onStatusChange?: (newStatus: string) => void;
+  /** callback when an activity has been recorded */
+  onActivityAdded?: (activity: any) => void;
 }
 
 export default function MarkQuotePanel({
@@ -14,6 +16,7 @@ export default function MarkQuotePanel({
   currentStatus,
   allowedStatuses = ["estimate", "ordered", "cancelled"],
   onStatusChange,
+  onActivityAdded,
 }: MarkQuotePanelProps) {
   const [status, setStatus] = useState(currentStatus);
   const [note, setNote] = useState("");
@@ -28,12 +31,17 @@ export default function MarkQuotePanel({
         body: JSON.stringify({ status, note }),
       });
       if (res.ok) {
-        await fetch(`/api/quotes/${quoteId}/activities`, {
+        const activityRes = await fetch(`/api/quotes/${quoteId}/activities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: note, type: `status:${status}` }),
         });
+        if (activityRes.ok) {
+          const activity = await activityRes.json();
+          onActivityAdded?.(activity);
+        }
         onStatusChange?.(status);
+        setNote("");
       } else {
         console.error(await res.json());
       }
