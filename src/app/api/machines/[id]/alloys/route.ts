@@ -1,11 +1,10 @@
-export const runtime = "nodejs";
-import { NextResponse } from "next/server";
+export const runtime = 'nodejs'
+import { NextResponse } from 'next/server';
 import { createClient } from "@/lib/supabase/server";
 
-type Ctx = { params: { id: string } };
-
 /** Link an alloy to this machine (POST) and list alloys (GET) */
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(_req: Request, context: { params: Record<string,string> }) {
+  const { params } = context;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("machine_alloys")
@@ -16,7 +15,8 @@ export async function GET(_req: Request, { params }: Ctx) {
   return NextResponse.json(data);
 }
 
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(req: Request, context: { params: Record<string,string> }) {
+  const { params } = context;
   const body = await req.json(); // { material_id, alloy_rate_multiplier? }
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -33,7 +33,8 @@ export async function POST(req: Request, { params }: Ctx) {
   return NextResponse.json(data, { status: 201 });
 }
 
-export async function DELETE(req: Request, { params }: Ctx) {
+export async function DELETE(req: Request, context: { params: Record<string,string> }) {
+  const { params } = context;
   const { material_id } = await req.json();
   const supabase = await createClient();
   const { error } = await supabase

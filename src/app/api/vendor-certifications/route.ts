@@ -1,5 +1,5 @@
 export const runtime = 'nodejs'
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";

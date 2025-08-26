@@ -10,11 +10,8 @@ const schema = z.object({
   is_active: z.boolean().optional(),
 });
 
-interface Params {
-  params: { id: string };
-}
-
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, context: { params: Record<string,string> }) {
+  const { params } = context;
   await requireAdmin();
   const searchParams = req.nextUrl.searchParams;
   const search = searchParams.get("search") || "";
@@ -36,7 +33,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   return NextResponse.json({ data, count });
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, context: { params: Record<string,string> }) {
+  const { params } = context;
   await requireAdmin();
   let body;
   try {
@@ -57,7 +55,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function PUT(req: NextRequest, { params }: Params) {
+export async function PUT(req: NextRequest, context: { params: Record<string,string> }) {
+  const { params } = context;
   await requireAdmin();
   const searchParams = req.nextUrl.searchParams;
   const id = searchParams.get("id");
@@ -85,7 +84,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, context: { params: Record<string,string> }) {
+  const { params } = context;
   await requireAdmin();
   const searchParams = req.nextUrl.searchParams;
   const id = searchParams.get("id");
@@ -103,4 +103,3 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
   return NextResponse.json({ ok: true });
 }
-
