@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import InstantQuoteForm from "@/components/quotes/InstantQuoteForm";
 
@@ -13,6 +13,22 @@ export default function InstantQuotePage({ searchParams }: Props) {
   const quoteId = typeof searchParams.quoteId === "string" ? searchParams.quoteId : undefined;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [geomReady, setGeomReady] = useState(!partId);
+
+  useEffect(() => {
+    if (!partId) return;
+    (async () => {
+      try {
+        await fetch("/api/parts/geometry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ part_id: partId }),
+        });
+      } finally {
+        setGeomReady(true);
+      }
+    })();
+  }, [partId]);
 
   const requestQuote = async () => {
     if (!quoteId) return;
@@ -35,7 +51,11 @@ export default function InstantQuotePage({ searchParams }: Props) {
     <div className="max-w-2xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Instant Quote</h1>
       {partId ? (
-        <InstantQuoteForm partId={partId} />
+        geomReady ? (
+          <InstantQuoteForm partId={partId} />
+        ) : (
+          <p className="text-sm text-gray-500">Analyzing geometry...</p>
+        )
       ) : (
         <p className="text-sm text-gray-500">No part selected.</p>
       )}
