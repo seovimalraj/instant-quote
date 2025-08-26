@@ -20,7 +20,7 @@ export default function ActivityLog({ quoteId }: Props) {
   useEffect(() => {
     const supabase = createClient();
     supabase
-      .from<Activity>("activities")
+      .from("activities")
       .select("id,type,created_at,data")
       .eq("quote_id", quoteId)
       .order("created_at", { ascending: true })

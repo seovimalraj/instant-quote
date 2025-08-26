@@ -12,7 +12,7 @@ export async function createSignedUploadUrl(
 ) {
   const { data, error } = await client.storage
     .from("parts")
-    .createSignedUploadUrl(path, 60);
+    .createSignedUploadUrl(path, { upsert: false });
   if (error) {
     throw error;
   }

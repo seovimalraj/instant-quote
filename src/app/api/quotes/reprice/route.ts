@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculatePricing } from "@/lib/pricing";

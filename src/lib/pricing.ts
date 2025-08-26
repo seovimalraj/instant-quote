@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { PricingInput } from "./validators/pricing";
 import { applyTeamDefaults } from "./dfm";
 

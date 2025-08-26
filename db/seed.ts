@@ -61,6 +61,16 @@ export async function seed() {
   ], { onConflict: 'process_code,name' });
   if (tolErr) throw tolErr;
 
+  // Certifications
+  const { error: certErr } = await supabase.from('certifications').upsert(
+    [
+      { name: 'ISO9001' },
+      { name: 'AS9100' },
+    ],
+    { onConflict: 'name' }
+  );
+  if (certErr) throw certErr;
+
   // Rate card
   const { error: rateErr } = await supabase.from('rate_cards').upsert([{
     region: 'us-east',

@@ -9,3 +9,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
 }
+
+.dfm-overlay {
+  border: 1px dashed red;
+}

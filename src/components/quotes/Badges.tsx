@@ -3,6 +3,7 @@
 interface Props {
   processKind?: string;
   leadTime?: "standard" | "expedite";
+  dfmCount?: number;
 }
 
 const processLabels: Record<string, string> = {
@@ -20,7 +21,7 @@ const leadLabels: Record<string, string> = {
   expedite: "Expedite",
 };
 
-export default function Badges({ processKind, leadTime }: Props) {
+export default function Badges({ processKind, leadTime, dfmCount }: Props) {
   return (
     <div className="flex gap-2">
       {processKind && (
@@ -31,6 +32,11 @@ export default function Badges({ processKind, leadTime }: Props) {
       {leadTime && (
         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
           {leadLabels[leadTime] || leadTime}
+        </span>
+      )}
+      {typeof dfmCount === 'number' && (
+        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
+          {dfmCount} DFM
         </span>
       )}
     </div>
