@@ -1,108 +1,99 @@
-"use client";
-
-import { useState } from "react";
-import Badges from "./Badges";
-import LineItemsTable from "./LineItemsTable";
-import TotalBar from "./TotalBar";
-import type { BreakdownLine, Currency } from "./BreakdownRow";
-
-export interface BreakdownWarning {
-  severity: "info" | "warn" | "error";
-  message: string;
-}
-
-export interface BreakdownJson {
-  lines: BreakdownLine[];
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  total: number;
-  currency: Currency;
-  warnings?: BreakdownWarning[];
-}
-
-interface Props {
-  breakdownJson: BreakdownJson;
-  processKind?: string;
-  leadTime?: "standard" | "expedite";
-}
-
-const warningColors: Record<"info" | "warn" | "error", string> = {
-  info: "bg-blue-50 text-blue-800",
-  warn: "bg-yellow-50 text-yellow-800",
-  error: "bg-red-50 text-red-800",
-};
-
-export default function PriceExplainerModal({
-  breakdownJson,
-  processKind,
-  leadTime,
-}: Props) {
-  const [open, setOpen] = useState(false);
-  const [showCalc, setShowCalc] = useState(false);
-
-  const subtotal = breakdownJson.lines.reduce((sum, l) => sum + l.value, 0);
-  const total = subtotal + breakdownJson.tax + breakdownJson.shipping;
-
-  return (
-    <>
-      <button
-        type="button"
-        className="text-sm underline"
-        onClick={() => setOpen(true)}
-      >
-        View price details
-      </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-md p-6 w-full max-w-lg shadow space-y-4">
-            <Badges processKind={processKind} leadTime={leadTime} />
-            {breakdownJson.warnings?.map((w, i) => (
-              <div
-                key={i}
-                className={`px-2 py-1 rounded text-sm ${warningColors[w.severity]}`}
-              >
-                {w.message}
-              </div>
-            ))}
-            <LineItemsTable
-              lines={breakdownJson.lines}
-              currency={breakdownJson.currency}
-            />
-            <TotalBar
-              subtotal={subtotal}
-              tax={breakdownJson.tax}
-              shipping={breakdownJson.shipping}
-              total={total}
-              currency={breakdownJson.currency}
-            />
-            <div>
-              <button
-                type="button"
-                className="text-sm underline"
-                onClick={() => setShowCalc((s) => !s)}
-              >
-                {showCalc ? "Hide details" : "How we calculated this"}
-              </button>
-              {showCalc && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Our price is derived from material, machine time, setup, finish, and
-                  other factors, plus tax and shipping.
-                </p>
-              )}
-            </div>
-            <div className="text-right">
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-                onClick={() => setOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
+diff --git a/src/components/quotes/PriceExplainerModal.tsx b/src/components/quotes/PriceExplainerModal.tsx
+index 521bd1f962d82115d98b351010a01b77ad63fe07..93e2cfc86cd11a2357684cdd4679a1e7ae6b15cd 100644
+--- a/src/components/quotes/PriceExplainerModal.tsx
++++ b/src/components/quotes/PriceExplainerModal.tsx
+@@ -1,71 +1,86 @@
+ "use client";
+ 
+-import { useState } from "react";
++import { useMemo, useState } from "react";
+ 
+ // Modal to display a pricing breakdown and total from a JSON object.
+ interface PriceBreakdown {
+   material?: number;
+   machining?: number;
+   finish?: number;
+   setup?: number;
+   tolerance?: number;
+   overhead?: number;
+   margin?: number;
+   tax?: number;
+   ship?: number;
+   carbon_offset?: number;
+ }
+ 
+ interface Props {
+   breakdownJson: PriceBreakdown;
+ }
+ 
+ export default function PriceExplainerModal({ breakdownJson }: Props) {
+   const [open, setOpen] = useState(false);
+ 
+-  const entries = Object.entries(breakdownJson).filter(
+-    ([, value]) => typeof value === "number"
++  const entries = useMemo(
++    () =>
++      Object.entries(breakdownJson).filter(
++        ([, value]) => typeof value === "number"
++      ),
++    [breakdownJson]
+   );
+ 
+-  const total = entries.reduce((sum, [, value]) => sum + (value || 0), 0);
++  const total = useMemo(
++    () => entries.reduce((sum, [, value]) => sum + (value || 0), 0),
++    [entries]
++  );
++
++  const format = (value: number) => `$${value.toFixed(2)}`;
+ 
+   return (
+     <>
+       <button
+         type="button"
+         className="text-sm underline"
+         onClick={() => setOpen(true)}
+       >
+         View price details
+       </button>
+       {open && (
+-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
++        <div
++          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
++          role="dialog"
++          aria-modal="true"
++        >
+           <div className="bg-white rounded-md p-6 w-full max-w-md shadow">
+             <h2 className="text-lg font-semibold mb-4">Price Breakdown</h2>
+             <ul className="space-y-1 text-sm">
+               {entries.map(([key, value]) => (
+                 <li key={key} className="flex justify-between">
+-                  <span className="capitalize">{key.replace(/_/g, " ")}</span>
+-                  <span>${value?.toFixed(2)}</span>
++                  <span className="capitalize">
++                    {key.replace(/_/g, " ")}
++                  </span>
++                  <span>{format(value ?? 0)}</span>
+                 </li>
+               ))}
+               <li className="flex justify-between font-medium border-t pt-1 mt-2">
+                 <span>Total</span>
+-                <span>${total.toFixed(2)}</span>
++                <span>{format(total)}</span>
+               </li>
+             </ul>
+             <div className="mt-4 text-right">
+               <button
+                 className="px-4 py-2 bg-blue-600 text-white rounded"
+                 onClick={() => setOpen(false)}
+               >
+                 Close
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+     </>
+   );
+ }
+ 
