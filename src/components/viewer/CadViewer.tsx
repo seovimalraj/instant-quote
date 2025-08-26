@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SectionPlane } from './controls/SectionPlane';
 import { ViewportHUD, Overlay } from './controls/ViewportHUD';
-import { loadStepIges } from './loaders/stepIges';
+import { loadSTEPorIGES } from './loaders/stepIges';
 import { loadSTL } from './loaders/stl';
 import { loadOBJ } from './loaders/obj';
 import { loadDXF } from './loaders/dxf';
@@ -38,7 +38,7 @@ export function CadViewer({
 
   useEffect(() => {
     if (!fileUrl) return;
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
     if (!ext) return;
     if (ext === 'sldprt') {
       setSldprt(true);
@@ -47,25 +47,22 @@ export function CadViewer({
     setSldprt(false);
     setIsOrtho(ext === 'dxf');
 
-    async function load() {
+    async function load(extension: string) {
       try {
-        if (['step', 'stp', 'iges', 'igs'].includes(ext)) {
-          const { geometry, unit } = await loadStepIges(fileUrl);
-          const material = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.1, roughness: 0.8 });
-          const mesh = new THREE.Mesh(geometry, material);
-          setObject(mesh);
+        if (['step', 'stp', 'iges', 'igs'].includes(extension)) {
+          const { object, geometry, unit } = await loadSTEPorIGES(fileUrl);
+          setObject(object);
           onGeometry(computeMeshMetrics(geometry, unit as any));
-        } else if (ext === 'stl') {
+        } else if (extension === 'stl') {
           const geometry = await loadSTL(fileUrl);
           const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xcccccc }));
           setObject(mesh);
           onGeometry(computeMeshMetrics(geometry));
-        } else if (ext === 'obj') {
-          const geometry = await loadOBJ(fileUrl);
-          const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xcccccc }));
-          setObject(mesh);
+        } else if (extension === 'obj') {
+          const { object, geometry } = await loadOBJ(fileUrl);
+          setObject(object);
           onGeometry(computeMeshMetrics(geometry));
-        } else if (ext === 'dxf') {
+        } else if (extension === 'dxf') {
           const { object, geometry, unit } = await loadDXF(fileUrl);
           setObject(object);
           onGeometry(computeMeshMetrics(geometry, unit as any));
@@ -74,7 +71,7 @@ export function CadViewer({
         console.error('Failed to load CAD file', e);
       }
     }
-    load();
+    load(ext);
   }, [fileUrl, fileName, onGeometry]);
 
   const handleSelect = (e: any) => {

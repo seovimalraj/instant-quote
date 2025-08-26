@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const process_kind = normalizeProcessKind(body.process);
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let material = (
     await supabase

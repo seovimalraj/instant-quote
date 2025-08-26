@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 
 export async function requireAuth() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -16,7 +16,7 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   const session = await requireAuth();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
     .select("role")

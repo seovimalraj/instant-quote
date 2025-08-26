@@ -5,7 +5,7 @@ interface Props {
 }
 
 export default async function OrderPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
     .select("id,status,total,created_at,order_items(id,part_id,quantity,line_total)")

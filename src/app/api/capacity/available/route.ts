@@ -13,7 +13,7 @@ const querySchema = z.object({
 
 // Provides upcoming available capacity dates for a machine.
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

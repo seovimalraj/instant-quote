@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminPartsPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: parts } = await supabase
     .from("parts")
     .select("id,file_name,owner_id,created_at")
