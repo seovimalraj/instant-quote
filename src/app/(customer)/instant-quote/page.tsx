@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import InstantQuoteForm from "@/components/quotes/InstantQuoteForm";
 
@@ -13,22 +13,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
   const quoteId = typeof searchParams.quoteId === "string" ? searchParams.quoteId : undefined;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [geomReady, setGeomReady] = useState(!partId);
-
-  useEffect(() => {
-    if (!partId) return;
-    (async () => {
-      try {
-        await fetch("/api/parts/geometry", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ part_id: partId }),
-        });
-      } finally {
-        setGeomReady(true);
-      }
-    })();
-  }, [partId]);
+  const [toast, setToast] = useState<string | null>(null);
 
   const requestQuote = async () => {
     if (!quoteId) return;
@@ -40,8 +25,8 @@ export default function InstantQuotePage({ searchParams }: Props) {
     });
     setLoading(false);
     if (res.ok) {
-      alert("Quote requested successfully");
-      router.push(`/quote/${quoteId}`);
+      setToast("Quote requested successfully");
+      setTimeout(() => router.push(`/quote/${quoteId}`), 1000);
     } else {
       console.error(await res.json());
     }
@@ -51,11 +36,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
     <div className="max-w-2xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Instant Quote</h1>
       {partId ? (
-        geomReady ? (
-          <InstantQuoteForm partId={partId} />
-        ) : (
-          <p className="text-sm text-gray-500">Analyzing geometry...</p>
-        )
+        <InstantQuoteForm partId={partId} />
       ) : (
         <p className="text-sm text-gray-500">No part selected.</p>
       )}
@@ -68,6 +49,11 @@ export default function InstantQuotePage({ searchParams }: Props) {
           Request Quote
         </button>
       </div>
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

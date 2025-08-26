@@ -39,11 +39,13 @@ export async function POST(req: Request) {
     });
 
     const channel = supabase.channel("quotes");
+    await channel.subscribe();
     await channel.send({
       type: "broadcast",
       event: "status",
       payload: { id: body.quote_id, status: "sent" },
     });
+    await channel.unsubscribe();
 
     return NextResponse.json({ quote });
   } catch (error) {
