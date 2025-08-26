@@ -6,7 +6,11 @@ export type DfmHint = {
   metric?: number | string;
 };
 
-/** Merge a user's team defaults into a target object. */
+/**
+ * Merge a user's saved team defaults into a set of form selections.
+ * This helper lets quoting UIs pre-fill dropdowns and other selectors
+ * with a team's preferred process, material, finish, etc.
+ */
 export function applyTeamDefaults<T>(
   user: { team_defaults?: Record<string, any> },
   selections: T
