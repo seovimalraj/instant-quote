@@ -120,7 +120,13 @@ drop policy if exists quotes_access on public.quotes;
 create policy quotes_access on public.quotes
   for select using (
     public.is_admin() or created_by = auth.uid() or
-    exists (select 1 from public.customers c where c.id = customer_id and c.owner_id = auth.uid())
+    exists (select 1 from public.customers c where c.id = customer_id and c.owner_id = auth.uid()) or
+    exists (
+      select 1 from public.shared_links sl
+      where sl.quote_id = id
+        and sl.token = current_setting('request.header.shared-link-token', true)
+        and (sl.expires_at is null or sl.expires_at > now())
+    )
   );
 drop policy if exists quotes_modify on public.quotes;
 create policy quotes_modify on public.quotes
@@ -144,7 +150,15 @@ create policy quote_items_access on public.quote_items
     public.is_admin() or exists (
       select 1 from public.quotes q
       join public.customers c on c.id = q.customer_id
-      where q.id = quote_id and (q.created_by = auth.uid() or c.owner_id = auth.uid())
+      where q.id = quote_id and (
+        q.created_by = auth.uid() or c.owner_id = auth.uid() or
+        exists (
+          select 1 from public.shared_links sl
+          where sl.quote_id = q.id
+            and sl.token = current_setting('request.header.shared-link-token', true)
+            and (sl.expires_at is null or sl.expires_at > now())
+        )
+      )
     )
   );
 drop policy if exists quote_items_modify on public.quote_items;
@@ -307,4 +321,51 @@ create policy cfr_insert on public.custom_form_responses
   for insert with check (respondent_id = auth.uid());
 drop policy if exists cfr_admin_all on public.custom_form_responses;
 create policy cfr_admin_all on public.custom_form_responses
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Certifications
+alter table public.certifications enable row level security;
+drop policy if exists certifications_admin_all on public.certifications;
+create policy certifications_admin_all on public.certifications
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Vendor certifications
+alter table public.vendor_certifications enable row level security;
+drop policy if exists vendor_certifications_admin_all on public.vendor_certifications;
+create policy vendor_certifications_admin_all on public.vendor_certifications
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Machine capacity days
+alter table public.machine_capacity_days enable row level security;
+drop policy if exists machine_capacity_days_admin_all on public.machine_capacity_days;
+create policy machine_capacity_days_admin_all on public.machine_capacity_days
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Shared links
+alter table public.shared_links enable row level security;
+drop policy if exists shared_links_owner_all on public.shared_links;
+create policy shared_links_owner_all on public.shared_links
+  for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists shared_links_token_select on public.shared_links;
+create policy shared_links_token_select on public.shared_links
+  for select using (
+    token = current_setting('request.header.shared-link-token', true) and (expires_at is null or expires_at > now())
+  );
+drop policy if exists shared_links_admin_all on public.shared_links;
+create policy shared_links_admin_all on public.shared_links
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Team defaults
+alter table public.team_defaults enable row level security;
+drop policy if exists team_defaults_owner_select on public.team_defaults;
+create policy team_defaults_owner_select on public.team_defaults
+  for select using (owner_id = auth.uid() or public.is_admin());
+drop policy if exists team_defaults_owner_insert on public.team_defaults;
+create policy team_defaults_owner_insert on public.team_defaults
+  for insert with check (owner_id = auth.uid());
+drop policy if exists team_defaults_owner_update on public.team_defaults;
+create policy team_defaults_owner_update on public.team_defaults
+  for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+drop policy if exists team_defaults_admin_all on public.team_defaults;
+create policy team_defaults_admin_all on public.team_defaults
   for all using (public.is_admin()) with check (public.is_admin());
