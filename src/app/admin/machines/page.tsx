@@ -39,6 +39,7 @@ function ClientPage() {
     expedite_multiplier: z.number().optional(),
     utilization_target: z.number().optional(),
     margin_pct: z.number().optional(),
+    is_itar_certified: z.boolean().optional(),
     is_active: z.boolean().optional(),
   });
 
@@ -58,6 +59,7 @@ function ClientPage() {
     { accessorKey: "process_code", header: "Process" },
     { accessorKey: "axis_count", header: "Axis" },
     { accessorKey: "rate_per_min", header: "Rate/min" },
+    { accessorKey: "is_itar_certified", header: "ITAR" },
   ];
 
   const fields = [
@@ -90,6 +92,7 @@ function ClientPage() {
       type: "number",
     },
     { name: "margin_pct", label: "Margin %", type: "number" },
+    { name: "is_itar_certified", label: "ITAR Certified", type: "checkbox" },
     { name: "is_active", label: "Active", type: "checkbox" },
   ];
 
