@@ -57,7 +57,7 @@ export default function AdminQuotesPage() {
         Quotes
         {newIds.size > 0 && (
           <span className="ml-2 text-sm bg-red-500 text-white rounded px-2">
-            NEW
+            {newIds.size} NEW
           </span>
         )}
       </h1>

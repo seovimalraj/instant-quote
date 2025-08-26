@@ -13,6 +13,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
   const quoteId = typeof searchParams.quoteId === "string" ? searchParams.quoteId : undefined;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const requestQuote = async () => {
     if (!quoteId) return;
@@ -24,8 +25,8 @@ export default function InstantQuotePage({ searchParams }: Props) {
     });
     setLoading(false);
     if (res.ok) {
-      alert("Quote requested successfully");
-      router.push(`/quote/${quoteId}`);
+      setToast("Quote requested successfully");
+      setTimeout(() => router.push(`/quote/${quoteId}`), 1000);
     } else {
       console.error(await res.json());
     }
@@ -48,6 +49,11 @@ export default function InstantQuotePage({ searchParams }: Props) {
           Request Quote
         </button>
       </div>
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
