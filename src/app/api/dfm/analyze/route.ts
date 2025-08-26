@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateDfM } from "@/lib/dfm";
 import { z } from "zod";

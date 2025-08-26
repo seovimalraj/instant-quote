@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stepRequestSchema, StepRequest } from "@/lib/validators/step";
