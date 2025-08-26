@@ -38,19 +38,17 @@ export async function POST(req: Request) {
       },
       { status: 501 },
     );
-  }
+  } else if ("mesh" in body) {
+    const result = maxProjectedArea(body.mesh.tris);
 
-  if (!("mesh" in body)) {
+    const currentMeta = part.meta ?? {};
+    await supabase
+      .from("parts")
+      .update({ meta: { ...currentMeta, projected_area_cm2: result.area_cm2 } })
+      .eq("id", partId);
+
+    return NextResponse.json(result);
+  } else {
     return NextResponse.json({ error: "Mesh data required" }, { status: 400 });
   }
-
-  const result = maxProjectedArea(body.mesh.tris);
-
-  const currentMeta = part.meta ?? {};
-  await supabase
-    .from("parts")
-    .update({ meta: { ...currentMeta, projected_area_cm2: result.area_cm2 } })
-    .eq("id", partId);
-
-  return NextResponse.json(result);
 }

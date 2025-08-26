@@ -380,14 +380,17 @@ export async function priceItem(
 
   let best: PricingResult | null = null;
   for (const c of candidates) {
-    const res = await priceWithMachine(c.machine, merged, c.matMul, c.finMul);
-    if (!best || res.total < best.total) {
-      best = res;
+    const cand = await priceWithMachine(c.machine, merged, c.matMul, c.finMul);
+    const warnings = [...(cand.warnings ?? [])];
+    const result: PricingResult = { ...cand, warnings };
+    if (!best || result.total < best.total) {
+      best = result;
     }
   }
 
   if (fallbackUsed && best) {
-    best.warnings.push("no_matching_machine_using_rate_card");
+    const warnings = [...(best.warnings ?? []), "no_matching_machine_using_rate_card"];
+    best = { ...best, warnings };
   }
 
   return best!;
@@ -407,31 +410,33 @@ export async function priceTiers(
   let prevUnit: number | null = null;
   for (const q of sorted) {
     const res = await priceItem({ ...input, quantity: q });
-    let unit = res.unit_price;
+    const warnings = [...(res.warnings ?? [])];
+    const result: PricingResult = { ...res, warnings };
+    let unit = result.unit_price;
     if (prevUnit !== null) {
       if (unit > prevUnit) {
         const newTotal = prevUnit * q;
-        const diff = newTotal - res.total;
-        res.lineItems.push({ description: "tier_adjustment", amount: diff });
-        res.breakdown.tier_adjustment = diff;
-        res.subtotal += diff;
-        res.total = newTotal;
+        const diff = newTotal - result.total;
+        result.lineItems.push({ description: "tier_adjustment", amount: diff });
+        result.breakdown.tier_adjustment = diff;
+        result.subtotal += diff;
+        result.total = newTotal;
         unit = prevUnit;
       } else if (unit < prevUnit * 0.8) {
         const capped = prevUnit * 0.8;
         const newTotal = capped * q;
-        const diff = newTotal - res.total;
-        res.lineItems.push({ description: "tier_adjustment", amount: diff });
-        res.breakdown.tier_adjustment = diff;
-        res.subtotal += diff;
-        res.total = newTotal;
+        const diff = newTotal - result.total;
+        result.lineItems.push({ description: "tier_adjustment", amount: diff });
+        result.breakdown.tier_adjustment = diff;
+        result.subtotal += diff;
+        result.total = newTotal;
         unit = capped;
       }
     }
-    res.unit_price = unit;
-    res.unit = unit;
+    result.unit_price = unit;
+    result.unit = unit;
     prevUnit = unit;
-    results[q] = res;
+    results[q] = result;
   }
   return results;
 }
