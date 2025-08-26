@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
 const querySchema = z.object({
@@ -29,10 +29,7 @@ export async function GET(request: Request) {
     redirect('/login')
   }
 
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+    const supabaseAdmin = createAdminClient()
   await supabaseAdmin.from('profiles').upsert({
     id: session.user.id,
     email: session.user.email,

@@ -6,6 +6,9 @@ All API route handlers validate incoming payloads using [zod](https://github.com
 ## Secrets
 The Supabase service role key is used only on the server and never exposed to client bundles.
 
+## Runtime Checks
+Supabase clients validate required environment variables at startup and throw explicit errors if configuration is missing.
+
 ## Storage
 File uploads use signed URLs that expire after **60 seconds** and target the private `parts` bucket.
 
