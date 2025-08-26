@@ -1,0 +1,11 @@
+:root {
+  --color-brand: #0057ff;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-muted: #6b7280;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
