@@ -1,15 +1,22 @@
+/* eslint-env node */
 import fs from 'node:fs';
-import path from 'node:path';
 import { globSync } from 'glob';
 
-const files = globSync('src/app/api/**/route.{ts,tsx}', { nodir: true, windowsPathsNoEscape: true });
+// Ensure all API routes run on Node.js runtime (avoids Edge + Supabase realtime warnings)
+const files = globSync('src/app/api/**/route.{ts,tsx}', {
+  nodir: true,
+  windowsPathsNoEscape: true,
+});
+
 for (const f of files) {
   let s = fs.readFileSync(f, 'utf8');
-  if (/export\s+const\s+runtime\s*=\s*['\"](edge|nodejs)['\"]/m.test(s)) {
-    // already declares runtime
-  } else {
-    s = `export const runtime = 'nodejs'\n` + s;
+  // Detect existing runtime export without unnecessary escapes
+  const hasRuntime = /export\s+const\s+runtime\s*=\s*['"](edge|nodejs)['"]/m.test(s);
+  if (!hasRuntime) {
+    s = "export const runtime = 'nodejs'\n" + s;
     fs.writeFileSync(f, s);
+    // eslint-disable-next-line no-console
     console.log('patched runtime=nodejs ->', f);
   }
 }
+
