@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Create a signed upload URL for the `parts` bucket.
- * URLs expire after 60 seconds to reduce exposure.
  * @param client Supabase client (server-side)
  * @param path   Object path within the bucket
  */
@@ -12,7 +11,7 @@ export async function createSignedUploadUrl(
 ) {
   const { data, error } = await client.storage
     .from("parts")
-    .createSignedUploadUrl(path, 60);
+    .createSignedUploadUrl(path, { upsert: true });
   if (error) {
     throw error;
   }
@@ -24,11 +23,12 @@ export async function uploadToParts(
   client: SupabaseClient,
   path: string,
   file: ArrayBuffer | Blob,
-  contentType: string,
+  contentType?: string,
 ) {
+  const inferredType = contentType ?? (file instanceof Blob ? file.type : undefined);
   const { data, error } = await client.storage
     .from("parts")
-    .upload(path, file, { upsert: true, contentType });
+    .upload(path, file, { upsert: true, contentType: inferredType });
   if (error) {
     throw error;
   }
