@@ -4,6 +4,13 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/client";
 import { z } from "zod";
 import { useEffect, useState } from "react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  addMonths,
+} from "date-fns";
 
 interface Props {
   params: { id: string };
@@ -25,6 +32,8 @@ function ClientPage({ machine }: { machine: any }) {
 
   const [materials, setMaterials] = useState<any[]>([]);
   const [finishes, setFinishes] = useState<any[]>([]);
+  const [month, setMonth] = useState<Date>(startOfMonth(new Date()));
+  const [capacity, setCapacity] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +57,24 @@ function ClientPage({ machine }: { machine: any }) {
     };
     load();
   }, [machine.process_code]);
+
+  useEffect(() => {
+    const loadCapacity = async () => {
+      const res = await fetch(
+        `/api/capacity/days?machine_id=${machine.id}&month=${format(
+          month,
+          "yyyy-MM"
+        )}`
+      );
+      const data = await res.json();
+      const map: Record<string, any> = {};
+      data.forEach((d: any) => {
+        map[d.day] = d;
+      });
+      setCapacity(map);
+    };
+    loadCapacity();
+  }, [machine.id, month]);
 
   const materialSchema = z.object({
     material_id: z.string().uuid(),
@@ -137,6 +164,106 @@ function ClientPage({ machine }: { machine: any }) {
           eqFilters={{ machine_id: machine.id }}
           insertDefaults={{ machine_id: machine.id }}
         />
+      </div>
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Capacity</h2>
+        <div className="flex items-center space-x-2 mb-2">
+          <button
+            className="px-2 py-1 border rounded"
+            onClick={() => setMonth(addMonths(month, -1))}
+          >
+            Prev
+          </button>
+          <span>{format(month, "MMMM yyyy")}</span>
+          <button
+            className="px-2 py-1 border rounded"
+            onClick={() => setMonth(addMonths(month, 1))}
+          >
+            Next
+          </button>
+        </div>
+        <table className="min-w-full border">
+          <thead>
+            <tr>
+              <th className="border px-2 py-1 text-left">Day</th>
+              <th className="border px-2 py-1 text-left">Minutes Available</th>
+              <th className="border px-2 py-1 text-left">Minutes Reserved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {eachDayOfInterval({ start: month, end: endOfMonth(month) }).map(
+              (d) => {
+                const key = format(d, "yyyy-MM-dd");
+                const cap = capacity[key] || {};
+                return (
+                  <tr key={key}>
+                    <td className="border px-2 py-1">{key}</td>
+                    <td className="border px-2 py-1">
+                      <input
+                        type="number"
+                        className="w-24 border px-1 py-0.5"
+                        value={cap.minutes_available ?? ""}
+                        onChange={(e) =>
+                          setCapacity((prev) => ({
+                            ...prev,
+                            [key]: {
+                              ...cap,
+                              minutes_available: Number(e.target.value),
+                            },
+                          }))
+                        }
+                        onBlur={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          const payload = {
+                            machine_id: machine.id,
+                            day: key,
+                            minutes_available: val,
+                            minutes_reserved: cap.minutes_reserved || 0,
+                          };
+                          fetch("/api/capacity/days", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                          });
+                        }}
+                      />
+                    </td>
+                    <td className="border px-2 py-1">
+                      <input
+                        type="number"
+                        className="w-24 border px-1 py-0.5"
+                        value={cap.minutes_reserved ?? ""}
+                        onChange={(e) =>
+                          setCapacity((prev) => ({
+                            ...prev,
+                            [key]: {
+                              ...cap,
+                              minutes_reserved: Number(e.target.value),
+                            },
+                          }))
+                        }
+                        onBlur={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          const payload = {
+                            machine_id: machine.id,
+                            day: key,
+                            minutes_available: cap.minutes_available || 0,
+                            minutes_reserved: val,
+                          };
+                          fetch("/api/capacity/days", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                          });
+                        }}
+                      />
+                    </td>
+                  </tr>
+                );
+              }
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
