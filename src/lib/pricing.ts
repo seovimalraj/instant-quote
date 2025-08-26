@@ -1,7 +1,5 @@
 import type { PricingInput } from "./validators/pricing";
-import { addDays, formatISO } from "date-fns";
 import { applyTeamDefaults } from "./dfm";
-import { createClient } from "./supabase/server";
 
 export interface LineItem {
   description: string;
@@ -21,6 +19,27 @@ export interface Machine {
   utilization_target?: number;
   margin_pct?: number;
   is_active?: boolean;
+  /** CNC specific */
+  tool_change_min?: number;
+  axis_factor_5?: number;
+  /** Injection specific */
+  runner_pct?: number;
+  cycle_time_base_sec?: number;
+  cycle_time_per_cm3_sec?: number;
+  press_rate_per_hour?: number;
+  tooling_base_cost?: number;
+  tooling_per_cm3_cost?: number;
+  tool_life_shots?: number;
+  changeover_min?: number;
+  shot_capacity_cm3?: number;
+  clamp_tonnage_t?: number;
+  /** Casting specific */
+  yield_pct?: number;
+  scrap_pct?: number;
+  melt_rate_kg_per_hr?: number;
+  mold_cost_per_unit?: number;
+  mold_setup_cost?: number;
+  max_gross_kg?: number;
 }
 
 export interface MachineMaterialLink {
@@ -39,7 +58,7 @@ export interface PricingResult {
   /** Quantity for this price result */
   q: number;
   /** Price per unit */
-  unit: number;
+  unit_price: number;
   /** Subtotal before tax/shipping */
   subtotal: number;
   tax: number;
@@ -51,10 +70,8 @@ export interface PricingResult {
   /** Map of line item descriptions to amounts */
   breakdown: Record<string, number>;
   machine_id?: string;
-  /** ISO string of the promised ship date */
-  promise_date: string;
-  /** Minutes of machine capacity reserved */
-  capacity_minutes_reserved: number;
+  warnings: string[];
+  breakdownJson: string;
 }
 
 function defaultMachineFromRateCard(input: PricingInput): Machine {
@@ -73,99 +90,148 @@ function defaultMachineFromRateCard(input: PricingInput): Machine {
   };
 }
 
-async function computePromiseDate(
-  machine_id: string,
-  minutes: number,
-  lead_time: "standard" | "expedite"
-): Promise<string> {
-  const supabase = createClient();
-  const today = new Date();
-  const windowStart = lead_time === "expedite" ? 1 : 3;
-  const searchHorizon = 30;
-  const start = addDays(today, windowStart);
-  const end = addDays(today, windowStart + searchHorizon);
-  const defaultDate = addDays(today, lead_time === "expedite" ? 3 : 7);
-
-  const { data, error } = await supabase
-    .from("machine_capacity_days")
-    .select("day, minutes_available, minutes_reserved")
-    .eq("machine_id", machine_id)
-    .gte("day", formatISO(start, { representation: "date" }))
-    .lte("day", formatISO(end, { representation: "date" }))
-    .order("day");
-
-  if (error || !data) {
-    return defaultDate.toISOString();
-  }
-
-  for (const d of data) {
-    const avail = (d.minutes_available ?? 0) - (d.minutes_reserved ?? 0);
-    if (avail >= minutes) {
-      return new Date(d.day).toISOString();
-    }
-  }
-
-  return end.toISOString();
-}
-
 async function priceWithMachine(
   machine: Machine,
   input: PricingInput,
   materialMultiplier: number,
-  finishMultiplier: number,
-  carbonOffset?: boolean
+  finishMultiplier: number
 ): Promise<PricingResult> {
-  const { geometry, material, finish, tolerance, quantity, rate_card, lead_time } = input;
+  const { geometry, material, finish, tolerance, quantity: q, rate_card, lead_time } = input;
   const lineItems: LineItem[] = [];
   const breakdown: Record<string, number> = {};
 
   const density = material.density_kg_m3 ?? 0;
-  const machinability = material.machinability_factor ?? 1;
+  let subtotal = 0;
 
-  const mass_kg = (geometry.volume_mm3 / 1e9) * density;
-  const materialCostPerPart = mass_kg * material.cost_per_kg;
-  const materialCost = materialCostPerPart * quantity;
-  lineItems.push({ description: "material", amount: materialCost });
-  breakdown.material = materialCost;
+  switch (machine.process_code) {
+    case "cnc":
+    case "cnc_milling":
+    case "cnc_turning": {
+      const k_area = 6;
+      const k_volume = 8;
+      let time_min =
+        k_area * (geometry.surface_area_mm2 / 1e6) +
+        k_volume * ((geometry.volume_mm3 * 0.35) / 1e9);
+      if (machine.axis_count === 5) {
+        time_min *= machine.axis_factor_5 ?? 0.85;
+      }
+      time_min *= material.machinability_factor ?? 1;
+      time_min += (machine.tool_change_min ?? 0) / q;
+      const utilization = machine.utilization_target ?? 1;
+      const machining = (time_min * q * machine.rate_per_min * materialMultiplier) / utilization;
+      breakdown.machining = machining;
+      lineItems.push({ description: "machining", amount: machining });
 
-  const k1 = 6;
-  const k2 = 8;
-  let time_min =
-    k1 * (geometry.surface_area_mm2 / 1e6) +
-    k2 * ((geometry.volume_mm3 * 0.35) / 1e9);
-  const axis_factor = machine.axis_count === 5 ? 0.85 : 1.0;
-  time_min *= axis_factor * machinability;
-  const utilization = machine.utilization_target ?? 1;
-  const machiningCost =
-    time_min * machine.rate_per_min * quantity * materialMultiplier / utilization;
-  lineItems.push({ description: "machining", amount: machiningCost });
-  breakdown.machining = machiningCost;
+      const mass_kg = (geometry.volume_mm3 / 1e9) * density * q;
+      const materialCost = mass_kg * material.cost_per_kg;
+      breakdown.material = materialCost;
+      lineItems.push({ description: "material", amount: materialCost });
+      subtotal = machining + materialCost;
 
-  let subtotal = materialCost + machiningCost;
-  const time_minutes = time_min * quantity;
+      if (finish) {
+        const area_m2 = (geometry.surface_area_mm2 / 1e6) * q;
+        const finishCost =
+          area_m2 * (finish.cost_per_m2 ?? 0) +
+          (finish.setup_fee ?? 0) * finishMultiplier;
+        breakdown.finish = finishCost;
+        lineItems.push({ description: "finish", amount: finishCost });
+        subtotal += finishCost;
+      }
 
-  if (machine.setup_fee) {
-    lineItems.push({ description: "setup_fee", amount: machine.setup_fee });
-    breakdown.setup_fee = machine.setup_fee;
-    subtotal += machine.setup_fee;
+      if (machine.setup_fee) {
+        breakdown.setup_fee = machine.setup_fee;
+        lineItems.push({ description: "setup_fee", amount: machine.setup_fee });
+        subtotal += machine.setup_fee;
+      }
+      break;
+    }
+    case "injection":
+    case "injection_proto": {
+      const runner = machine.runner_pct ?? 0;
+      const shot_cm3 = (geometry.volume_mm3 / 1000) * (1 + runner);
+      const cycle_sec =
+        (machine.cycle_time_base_sec ?? 0) +
+        (machine.cycle_time_per_cm3_sec ?? 0) * shot_cm3;
+      const press_cost =
+        ((cycle_sec / 3600) * (machine.press_rate_per_hour ?? 0)) * q;
+      breakdown.press = press_cost;
+      lineItems.push({ description: "press", amount: press_cost });
+
+      const material_kg = (geometry.volume_mm3 / 1e9) * density * q * (1 + runner);
+      const materialCost = material_kg * material.cost_per_kg;
+      breakdown.material = materialCost;
+      lineItems.push({ description: "material", amount: materialCost });
+
+      const tooling_base = machine.tooling_base_cost ?? 0;
+      const tooling_per = machine.tooling_per_cm3_cost ?? 0;
+      const tooling_total = tooling_base + tooling_per * (geometry.volume_mm3 / 1000);
+      const tool_life = Math.min(q, machine.tool_life_shots ?? q);
+      const tooling_cost = (tooling_total * q) / tool_life;
+      if (tooling_cost) {
+        breakdown.tooling = tooling_cost;
+        lineItems.push({ description: "tooling", amount: tooling_cost });
+      }
+
+      const changeover = ((machine.changeover_min ?? 0) / 60) * (machine.press_rate_per_hour ?? 0);
+      if (changeover) {
+        breakdown.changeover = changeover;
+        lineItems.push({ description: "changeover", amount: changeover });
+      }
+
+      subtotal = press_cost + materialCost + tooling_cost + changeover;
+      break;
+    }
+    case "casting": {
+      const net_kg = (geometry.volume_mm3 / 1e9) * density;
+      const gross_kg =
+        (net_kg / ((machine.yield_pct ?? 100) / 100)) *
+        (1 + (machine.scrap_pct ?? 0) / 100);
+      const materialCost = gross_kg * material.cost_per_kg * q;
+      breakdown.material = materialCost;
+      lineItems.push({ description: "material", amount: materialCost });
+      const melt_time_min =
+        ((gross_kg * q) / (machine.melt_rate_kg_per_hr ?? 1)) * 60;
+      const utilization = machine.utilization_target ?? 1;
+      const line_cost = (melt_time_min / utilization) * machine.rate_per_min;
+      breakdown.line = line_cost;
+      lineItems.push({ description: "line", amount: line_cost });
+      const mold_cost =
+        (machine.mold_cost_per_unit ?? 0) * q + (machine.mold_setup_cost ?? 0);
+      if (mold_cost) {
+        breakdown.mold = mold_cost;
+        lineItems.push({ description: "mold", amount: mold_cost });
+      }
+      let finishCost = 0;
+      if (finish) {
+        const area_m2 = (geometry.surface_area_mm2 / 1e6) * q;
+        finishCost =
+          area_m2 * (finish.cost_per_m2 ?? 0) +
+          (finish.setup_fee ?? 0) * finishMultiplier;
+        breakdown.finish = finishCost;
+        lineItems.push({ description: "finish", amount: finishCost });
+      }
+      subtotal = materialCost + line_cost + mold_cost + finishCost;
+      break;
+    }
+    default: {
+      subtotal = 0;
+    }
   }
 
-  if (finish) {
-    const area_m2 = (geometry.surface_area_mm2 / 1e6) * quantity;
-    const areaCost = area_m2 * (finish.cost_per_m2 ?? 0);
-    const setup = (finish.setup_fee ?? 0) * finishMultiplier;
-    const finishCost = areaCost + setup;
-    lineItems.push({ description: "finish", amount: finishCost });
-    breakdown.finish = finishCost;
-    subtotal += finishCost;
+  const discount = Math.min(0.2, 1 - 1 / Math.sqrt(q));
+  if (discount > 0) {
+    const discAmt = subtotal * discount;
+    subtotal *= 1 - discount;
+    lineItems.push({ description: "quantity_discount", amount: -discAmt });
+    breakdown.quantity_discount = -discAmt;
   }
 
   const tolMultiplier = tolerance?.cost_multiplier ?? 1;
   if (tolMultiplier !== 1) {
-    const tolAmount = subtotal * (tolMultiplier - 1);
+    const tolAmt = subtotal * (tolMultiplier - 1);
     subtotal *= tolMultiplier;
-    lineItems.push({ description: "tolerance", amount: tolAmount });
-    breakdown.tolerance = tolAmount;
+    lineItems.push({ description: "tolerance", amount: tolAmt });
+    breakdown.tolerance = tolAmt;
   }
 
   const overhead = machine.overhead_multiplier ?? 1;
@@ -186,24 +252,17 @@ async function priceWithMachine(
     }
   }
 
-  const discount = Math.min(0.2, 1 - 1 / Math.sqrt(quantity));
-  if (discount > 0) {
-    const discAmt = subtotal * discount;
-    subtotal *= 1 - discount;
-    lineItems.push({ description: "quantity_discount", amount: -discAmt });
-    breakdown.quantity_discount = -discAmt;
-  }
-
-  const carbon_rate = rate_card.carbon_offset_rate_per_order ?? 0;
-  if (carbonOffset && carbon_rate > 0) {
-    lineItems.push({ description: "carbon_offset", amount: carbon_rate });
-    breakdown.carbon_offset = carbon_rate;
-    subtotal += carbon_rate;
+  const margin = machine.margin_pct ?? 0;
+  if (margin) {
+    const marginAmt = subtotal * margin;
+    subtotal += marginAmt;
+    lineItems.push({ description: "margin", amount: marginAmt });
+    breakdown.margin = marginAmt;
   }
 
   const tax = subtotal * (rate_card.tax_rate ?? 0);
   const shipping = rate_card.shipping_flat ?? 0;
-  let total = subtotal + tax + shipping;
+  const total = subtotal + tax + shipping;
   if (tax) {
     lineItems.push({ description: "tax", amount: tax });
     breakdown.tax = tax;
@@ -213,25 +272,9 @@ async function priceWithMachine(
     breakdown.shipping = shipping;
   }
 
-  const margin = machine.margin_pct ?? 0;
-  if (margin) {
-    const marginAmt = total * margin;
-    total += marginAmt;
-    lineItems.push({ description: "margin", amount: marginAmt });
-    breakdown.margin = marginAmt;
-  }
-
-  const promise_date = await computePromiseDate(
-    machine.id,
-    time_minutes,
-    lead_time
-  );
-
-  const unit = total / quantity;
-
   return {
-    q: quantity,
-    unit,
+    q,
+    unit_price: total / q,
     subtotal,
     tax,
     shipping,
@@ -239,8 +282,8 @@ async function priceWithMachine(
     lineItems,
     breakdown,
     machine_id: machine.id,
-    promise_date,
-    capacity_minutes_reserved: time_minutes,
+    warnings: [],
+    breakdownJson: JSON.stringify(breakdown),
   };
 }
 
@@ -249,7 +292,6 @@ export async function priceItem(
     machines: Machine[];
     machineMaterials?: MachineMaterialLink[];
     machineFinishes?: MachineFinishLink[];
-    carbon_offset?: boolean;
     user?: { team_defaults?: Record<string, any> };
   }
 ): Promise<PricingResult> {
@@ -262,6 +304,7 @@ export async function priceItem(
 
   const candidates: { machine: Machine; matMul: number; finMul: number }[] = [];
 
+  let fallbackUsed = false;
   for (const m of input.machines) {
     if (m.process_code !== merged.process) continue;
     if (m.is_active === false) continue;
@@ -269,6 +312,17 @@ export async function priceItem(
       const [bx, by, bz] = merged.geometry.bbox;
       const [ex, ey, ez] = m.envelope_mm;
       if (bx > ex || by > ey || bz > ez) continue;
+    }
+    if (m.process_code.startsWith("injection")) {
+      const runner = m.runner_pct ?? 0;
+      const shot = (merged.geometry.volume_mm3 / 1000) * (1 + runner);
+      if (m.shot_capacity_cm3 && shot > m.shot_capacity_cm3) continue;
+    }
+    if (m.process_code === "casting") {
+      const density = merged.material.density_kg_m3 ?? 0;
+      const net = (merged.geometry.volume_mm3 / 1e9) * density;
+      const gross = (net / ((m.yield_pct ?? 100) / 100)) * (1 + (m.scrap_pct ?? 0) / 100);
+      if (m.max_gross_kg && gross > m.max_gross_kg) continue;
     }
     const matLinks = input.machineMaterials?.filter((l) => l.machine_id === m.id) ?? [];
     let matMul = 1;
@@ -292,20 +346,19 @@ export async function priceItem(
   if (candidates.length === 0) {
     const fallback = defaultMachineFromRateCard(merged);
     candidates.push({ machine: fallback, matMul: 1, finMul: 1 });
+    fallbackUsed = true;
   }
 
   let best: PricingResult | null = null;
   for (const c of candidates) {
-    const res = await priceWithMachine(
-      c.machine,
-      merged,
-      c.matMul,
-      c.finMul,
-      input.carbon_offset
-    );
+    const res = await priceWithMachine(c.machine, merged, c.matMul, c.finMul);
     if (!best || res.total < best.total) {
       best = res;
     }
+  }
+
+  if (fallbackUsed && best) {
+    best.warnings.push("no_matching_machine_using_rate_card");
   }
 
   return best!;
@@ -317,7 +370,6 @@ export async function priceTiers(
     machines: Machine[];
     machineMaterials?: MachineMaterialLink[];
     machineFinishes?: MachineFinishLink[];
-    carbon_offset?: boolean;
     user?: { team_defaults?: Record<string, any> };
   }
 ): Promise<Record<number, PricingResult>> {
@@ -326,7 +378,7 @@ export async function priceTiers(
   let prevUnit: number | null = null;
   for (const q of sorted) {
     const res = await priceItem({ ...input, quantity: q });
-    let unit = res.unit;
+    let unit = res.unit_price;
     if (prevUnit !== null) {
       if (unit > prevUnit) {
         const newTotal = prevUnit * q;
@@ -347,7 +399,7 @@ export async function priceTiers(
         unit = capped;
       }
     }
-    res.unit = unit;
+    res.unit_price = unit;
     prevUnit = unit;
     results[q] = res;
   }
