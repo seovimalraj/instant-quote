@@ -3,14 +3,8 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-const materialSchema = z.object({
+const schema = z.object({
   material_id: z.string().uuid(),
-  material_rate_multiplier: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
-
-const updateSchema = z.object({
-  id: z.string().uuid(),
   material_rate_multiplier: z.number().optional(),
   is_active: z.boolean().optional(),
 });
@@ -19,24 +13,33 @@ interface Params {
   params: { id: string };
 }
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   await requireAdmin();
+  const { searchParams } = new URL(req.url);
+  const search = searchParams.get("search") || "";
+  const page = parseInt(searchParams.get("page") || "0", 10);
+  const PAGE_SIZE = 10;
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { data, count, error } = await supabase
     .from("machine_materials")
-    .select("id, material_id, material_rate_multiplier, is_active, materials(name)")
-    .eq("machine_id", params.id);
+    .select("id, material_id, material_rate_multiplier, is_active, materials(name)", {
+      count: "exact",
+    })
+    .eq("machine_id", params.id)
+    .order("materials.name")
+    .ilike("materials.name", `%${search}%`)
+    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json({ data, count });
 }
 
 export async function POST(req: Request, { params }: Params) {
   await requireAdmin();
   let body;
   try {
-    body = materialSchema.parse(await req.json());
+    body = schema.parse(await req.json());
   } catch (err: any) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
@@ -44,8 +47,8 @@ export async function POST(req: Request, { params }: Params) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("machine_materials")
-    .insert({ machine_id: params.id, ...body })
-    .select("*")
+    .insert({ ...body, machine_id: params.id })
+    .select("id, material_id, material_rate_multiplier, is_active, materials(name)")
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -55,9 +58,14 @@ export async function POST(req: Request, { params }: Params) {
 
 export async function PUT(req: Request, { params }: Params) {
   await requireAdmin();
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
   let body;
   try {
-    body = updateSchema.parse(await req.json());
+    body = schema.partial().parse(await req.json());
   } catch (err: any) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
@@ -65,13 +73,10 @@ export async function PUT(req: Request, { params }: Params) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("machine_materials")
-    .update({
-      material_rate_multiplier: body.material_rate_multiplier,
-      is_active: body.is_active,
-    })
-    .eq("id", body.id)
+    .update(body)
+    .eq("id", id)
     .eq("machine_id", params.id)
-    .select("*")
+    .select("id, material_id, material_rate_multiplier, is_active, materials(name)")
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -81,10 +86,10 @@ export async function PUT(req: Request, { params }: Params) {
 
 export async function DELETE(req: Request, { params }: Params) {
   await requireAdmin();
-  const body = await req.json().catch(() => null);
-  const id = body?.id as string | undefined;
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
   if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
   const supabase = createClient();
   const { error } = await supabase
@@ -97,3 +102,4 @@ export async function DELETE(req: Request, { params }: Params) {
   }
   return NextResponse.json({ ok: true });
 }
+

@@ -19,17 +19,23 @@ const machineSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   await requireAdmin();
+  const { searchParams } = new URL(req.url);
+  const search = searchParams.get("search") || "";
+  const page = parseInt(searchParams.get("page") || "0", 10);
+  const PAGE_SIZE = 10;
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { data, count, error } = await supabase
     .from("machines")
-    .select("*")
-    .order("name");
+    .select("*", { count: "exact" })
+    .order("name")
+    .ilike("name", `%${search}%`)
+    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json({ data, count });
 }
 
 export async function POST(req: Request) {

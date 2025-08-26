@@ -41,7 +41,7 @@ export async function PUT(req: Request, { params }: Params) {
   await requireAdmin();
   let body;
   try {
-    body = machineSchema.parse(await req.json());
+    body = machineSchema.partial().parse(await req.json());
   } catch (err: any) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
