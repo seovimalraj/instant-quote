@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createAdminClient, type User } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 async function ensureProfile(user: User) {
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabaseAdmin = createAdminClient()
   await supabaseAdmin.from('profiles').upsert({
     id: user.id,
     email: user.email,
@@ -17,23 +15,24 @@ async function ensureProfile(user: User) {
 
 export async function POST() {
   const cookieStore = cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value
-        },
-        set(name, value, options) {
-          cookieStore.set(name, value, options)
-        },
-        remove(name, options) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 })
-        },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !anonKey) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      get(name) {
+        return cookieStore.get(name)?.value
       },
-    }
-  )
+      set(name, value, options) {
+        cookieStore.set(name, value, options)
+      },
+      remove(name, options) {
+        cookieStore.set(name, '', { ...options, maxAge: 0 })
+      },
+    },
+  })
 
   const {
     data: { session },
