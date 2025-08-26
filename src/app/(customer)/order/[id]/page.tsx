@@ -1,15 +1,25 @@
+export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 
-interface Props {
-  params: { id: string };
-}
-
-export default async function OrderPage({ params }: Props) {
+export default async function OrderPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return <div className="p-10">Please log in.</div>;
+  }
   const { data: order } = await supabase
     .from("orders")
-    .select("id,status,total,created_at,order_items(id,part_id,quantity,line_total)")
-    .eq("id", params.id)
+    .select(
+      "id,status,total,created_at,order_items(id,part_id,quantity,line_total)"
+    )
+    .eq("id", id)
     .single();
 
   if (!order) {
