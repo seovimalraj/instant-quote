@@ -142,27 +142,21 @@ function ClientPage({ machine }: { machine: any }) {
       <div>
         <h2 className="text-xl font-semibold mb-4">Materials</h2>
         <DataTable
-          table="machine_materials"
+          endpoint={`/api/machines/${machine.id}/materials`}
+          idInQuery
           columns={materialColumns}
           schema={materialSchema}
           fields={materialFields}
-          filterKey="materials.name"
-          select="id, material_id, material_rate_multiplier, is_active, materials(name)"
-          eqFilters={{ machine_id: machine.id }}
-          insertDefaults={{ machine_id: machine.id }}
         />
       </div>
       <div>
         <h2 className="text-xl font-semibold mb-4">Finishes</h2>
         <DataTable
-          table="machine_finishes"
+          endpoint={`/api/machines/${machine.id}/finishes`}
+          idInQuery
           columns={finishColumns}
           schema={finishSchema}
           fields={finishFields}
-          filterKey="finishes.name"
-          select="id, finish_id, finish_rate_multiplier, is_active, finishes(name)"
-          eqFilters={{ machine_id: machine.id }}
-          insertDefaults={{ machine_id: machine.id }}
         />
       </div>
       <div>
