@@ -29,17 +29,8 @@ function ClientPage() {
   const schema = z.object({
     name: z.string().min(1),
     process_code: z.string().min(1),
-    axis_count: z.number().optional(),
-    envelope_mm_x: z.number().optional(),
-    envelope_mm_y: z.number().optional(),
-    envelope_mm_z: z.number().optional(),
-    rate_per_min: z.number().optional(),
-    setup_fee: z.number().optional(),
-    overhead_multiplier: z.number().optional(),
-    expedite_multiplier: z.number().optional(),
-    utilization_target: z.number().optional(),
-    margin_pct: z.number().optional(),
-    is_itar_certified: z.boolean().optional(),
+    rate_per_min: z.number().nonnegative(),
+    margin_pct: z.number().nonnegative(),
     is_active: z.boolean().optional(),
   });
 
@@ -57,9 +48,8 @@ function ClientPage() {
       ),
     },
     { accessorKey: "process_code", header: "Process" },
-    { accessorKey: "axis_count", header: "Axis" },
     { accessorKey: "rate_per_min", header: "Rate/min" },
-    { accessorKey: "is_itar_certified", header: "ITAR" },
+    { accessorKey: "margin_pct", header: "Margin %" },
   ];
 
   const fields = [
@@ -70,29 +60,8 @@ function ClientPage() {
       type: "select",
       options: processes.map((p) => ({ value: p.code, label: p.name })),
     },
-    { name: "axis_count", label: "Axis Count", type: "number" },
-    { name: "envelope_mm_x", label: "Envelope X (mm)", type: "number" },
-    { name: "envelope_mm_y", label: "Envelope Y (mm)", type: "number" },
-    { name: "envelope_mm_z", label: "Envelope Z (mm)", type: "number" },
     { name: "rate_per_min", label: "Rate/min", type: "number" },
-    { name: "setup_fee", label: "Setup Fee", type: "number" },
-    {
-      name: "overhead_multiplier",
-      label: "Overhead Multiplier",
-      type: "number",
-    },
-    {
-      name: "expedite_multiplier",
-      label: "Expedite Multiplier",
-      type: "number",
-    },
-    {
-      name: "utilization_target",
-      label: "Utilization Target",
-      type: "number",
-    },
     { name: "margin_pct", label: "Margin %", type: "number" },
-    { name: "is_itar_certified", label: "ITAR Certified", type: "checkbox" },
     { name: "is_active", label: "Active", type: "checkbox" },
   ];
 
@@ -105,6 +74,7 @@ function ClientPage() {
         schema={schema}
         fields={fields}
         filterKey="name"
+        filterPlaceholder="Filter machines"
       />
     </div>
   );

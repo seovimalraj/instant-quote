@@ -1,16 +1,7 @@
-import DataTable from "@/components/admin/DataTable";
 import { requireAdmin } from "@/lib/auth";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@/lib/supabase/client";
 import { z } from "zod";
-import { useEffect, useState } from "react";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  addMonths,
-} from "date-fns";
+import { useState } from "react";
 
 interface Props {
   params: { id: string };
@@ -30,238 +21,437 @@ export default async function MachineDetailPage({ params }: Props) {
 function ClientPage({ machine }: { machine: any }) {
   "use client";
 
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [finishes, setFinishes] = useState<any[]>([]);
-  const [month, setMonth] = useState<Date>(startOfMonth(new Date()));
-  const [capacity, setCapacity] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<any>({
+    name: machine.name || "",
+    rate_per_min: machine.rate_per_min ?? 0,
+    margin_pct: machine.margin_pct ?? 0,
+    is_active: machine.is_active ?? true,
+    axis_count: machine.axis_count ?? 3,
+    envelope_mm_x: machine.envelope_mm?.[0] ?? 0,
+    envelope_mm_y: machine.envelope_mm?.[1] ?? 0,
+    envelope_mm_z: machine.envelope_mm?.[2] ?? 0,
+    clamp_tonnage: machine.meta?.clamp_tonnage ?? 0,
+    shot_volume_cc: machine.meta?.shot_volume_cc ?? 0,
+    max_cast_weight_kg: machine.meta?.max_cast_weight_kg ?? 0,
+    mold_size_mm: machine.meta?.mold_size_mm ?? 0,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"details" | "test">("details");
 
-  useEffect(() => {
-    const load = async () => {
-      const supabase = createClient();
-      const [{ data: mats }, { data: fins }] = await Promise.all([
-        supabase
-          .from("materials")
-          .select("id,name")
-          .eq("is_active", true)
-          .eq("process_code", machine.process_code)
-          .order("name"),
-        supabase
-          .from("finishes")
-          .select("id,name")
-          .eq("is_active", true)
-          .eq("process_code", machine.process_code)
-          .order("name"),
-      ]);
-      setMaterials(mats || []);
-      setFinishes(fins || []);
-    };
-    load();
-  }, [machine.process_code]);
+  const baseSchema = z.object({
+    name: z.string().min(1),
+    rate_per_min: z.number().nonnegative(),
+    margin_pct: z.number().nonnegative(),
+    is_active: z.boolean().optional(),
+  });
+  const cncSchema = baseSchema.extend({
+    axis_count: z.number().int().positive(),
+    envelope_mm_x: z.number().nonnegative(),
+    envelope_mm_y: z.number().nonnegative(),
+    envelope_mm_z: z.number().nonnegative(),
+  });
+  const injectionSchema = baseSchema.extend({
+    clamp_tonnage: z.number().nonnegative(),
+    shot_volume_cc: z.number().nonnegative(),
+  });
+  const castingSchema = baseSchema.extend({
+    max_cast_weight_kg: z.number().nonnegative(),
+    mold_size_mm: z.number().nonnegative(),
+  });
 
-  useEffect(() => {
-    const loadCapacity = async () => {
-      const res = await fetch(
-        `/api/capacity/days?machine_id=${machine.id}&month=${format(
-          month,
-          "yyyy-MM"
-        )}`
-      );
-      const data = await res.json();
-      const map: Record<string, any> = {};
-      data.forEach((d: any) => {
-        map[d.day] = d;
+  const process = machine.process_code || "";
+  const schema = process.includes("injection")
+    ? injectionSchema
+    : process.includes("casting")
+    ? castingSchema
+    : cncSchema;
+
+  const handleChange = (name: string, value: any) => {
+    setForm((f: any) => ({ ...f, [name]: value }));
+  };
+
+  const save = async () => {
+    const result = schema.safeParse(form);
+    if (!result.success) {
+      const map: Record<string, string> = {};
+      result.error.issues.forEach((i) => {
+        const key = i.path[0] as string;
+        map[key] = i.message;
       });
-      setCapacity(map);
+      setErrors(map);
+      return;
+    }
+    await fetch(`/api/machines/${machine.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result.data),
+    });
+    alert("Saved");
+  };
+
+  const [sim, setSim] = useState({
+    volume_mm3: "",
+    surface_area_mm2: "",
+    quantity: 1,
+  });
+  const [simErrors, setSimErrors] = useState<Record<string, string>>({});
+  const [breakdown, setBreakdown] = useState<any | null>(null);
+  const simSchema = z.object({
+    volume_mm3: z.number().nonnegative(),
+    surface_area_mm2: z.number().nonnegative(),
+    quantity: z.number().int().positive(),
+  });
+
+  const runSim = async () => {
+    const parsed = simSchema.safeParse({
+      volume_mm3: Number(sim.volume_mm3),
+      surface_area_mm2: Number(sim.surface_area_mm2),
+      quantity: Number(sim.quantity),
+    });
+    if (!parsed.success) {
+      const map: Record<string, string> = {};
+      parsed.error.issues.forEach((i) => {
+        const key = i.path[0] as string;
+        map[key] = i.message;
+      });
+      setSimErrors(map);
+      return;
+    }
+    setSimErrors({});
+    const body = {
+      process: machine.process_code,
+      quantity: parsed.data.quantity,
+      geometry: {
+        volume_mm3: parsed.data.volume_mm3,
+        surface_area_mm2: parsed.data.surface_area_mm2,
+        bbox: [0, 0, 0],
+      },
+      material: { cost_per_kg: 0 },
+      rate_card: {},
     };
-    loadCapacity();
-  }, [machine.id, month]);
-
-  const materialSchema = z.object({
-    material_id: z.string().uuid(),
-    material_rate_multiplier: z.number().optional(),
-    is_active: z.boolean().optional(),
-  });
-
-  const materialColumns = [
-    {
-      accessorKey: "material_id",
-      header: "Material",
-      cell: ({ row }: any) => row.original.materials?.name || row.original.material_id,
-    },
-    { accessorKey: "material_rate_multiplier", header: "Multiplier" },
-  ];
-
-  const materialFields = [
-    {
-      name: "material_id",
-      label: "Material",
-      type: "select",
-      options: materials.map((m) => ({ value: m.id, label: m.name })),
-    },
-    {
-      name: "material_rate_multiplier",
-      label: "Rate Multiplier",
-      type: "number",
-    },
-    { name: "is_active", label: "Active", type: "checkbox" },
-  ];
-
-  const finishSchema = z.object({
-    finish_id: z.string().uuid(),
-    finish_rate_multiplier: z.number().optional(),
-    is_active: z.boolean().optional(),
-  });
-
-  const finishColumns = [
-    {
-      accessorKey: "finish_id",
-      header: "Finish",
-      cell: ({ row }: any) => row.original.finishes?.name || row.original.finish_id,
-    },
-    { accessorKey: "finish_rate_multiplier", header: "Multiplier" },
-  ];
-
-  const finishFields = [
-    {
-      name: "finish_id",
-      label: "Finish",
-      type: "select",
-      options: finishes.map((f) => ({ value: f.id, label: f.name })),
-    },
-    {
-      name: "finish_rate_multiplier",
-      label: "Rate Multiplier",
-      type: "number",
-    },
-    { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+    const res = await fetch("/api/pricing/simulate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    setBreakdown(json.breakdown || json);
+  };
 
   return (
-    <div className="max-w-5xl mx-auto py-10 space-y-10">
+    <div className="max-w-3xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-4">{machine.name}</h1>
-      <p className="text-sm mb-4">
-        ITAR Certified: {machine.is_itar_certified ? "Yes" : "No"}
-      </p>
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Materials</h2>
-        <DataTable
-          endpoint={`/api/machines/${machine.id}/materials`}
-          idInQuery
-          columns={materialColumns}
-          schema={materialSchema}
-          fields={materialFields}
-        />
-      </div>
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Finishes</h2>
-        <DataTable
-          endpoint={`/api/machines/${machine.id}/finishes`}
-          idInQuery
-          columns={finishColumns}
-          schema={finishSchema}
-          fields={finishFields}
-        />
-      </div>
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Capacity</h2>
-        <div className="flex items-center space-x-2 mb-2">
+      <nav className="mb-6 border-b">
+        <ul className="flex space-x-4">
+          <li>
+            <a
+              href={`/admin/materials?process=${process}`}
+              className="text-blue-600"
+            >
+              Materials
+            </a>
+          </li>
+          <li>
+            <a
+              href={`/admin/finishes?process=${process}`}
+              className="text-blue-600"
+            >
+              Finishes
+            </a>
+          </li>
+          <li>
+            <a
+              href={`/admin/resins?process=${process}`}
+              className="text-blue-600"
+            >
+              Resins
+            </a>
+          </li>
+          <li>
+            <a
+              href={`/admin/alloys?process=${process}`}
+              className="text-blue-600"
+            >
+              Alloys
+            </a>
+          </li>
+          <li>
+            <button
+              className={tab === "test" ? "font-semibold" : "text-blue-600"}
+              onClick={() => setTab("test")}
+            >
+              Test Pricing
+            </button>
+          </li>
+        </ul>
+      </nav>
+      {tab === "details" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1">
+              Name
+            </label>
+            <input
+              className="border rounded p-2 w-full"
+              value={form.name}
+              onChange={(e) => handleChange("name", e.target.value)}
+            />
+            {errors.name && (
+              <p className="text-red-600 text-sm">{errors.name}</p>
+            )}
+          </div>
+          <div>
+            <label className="block mb-1" title="Cost per minute of machine time">
+              Rate per min
+            </label>
+            <input
+              type="number"
+              className="border rounded p-2 w-full"
+              value={form.rate_per_min}
+              onChange={(e) => handleChange("rate_per_min", Number(e.target.value))}
+            />
+            {errors.rate_per_min && (
+              <p className="text-red-600 text-sm">{errors.rate_per_min}</p>
+            )}
+          </div>
+          <div>
+            <label className="block mb-1" title="Margin percentage applied to costs">
+              Margin %
+            </label>
+            <input
+              type="number"
+              className="border rounded p-2 w-full"
+              value={form.margin_pct}
+              onChange={(e) => handleChange("margin_pct", Number(e.target.value))}
+            />
+            {errors.margin_pct && (
+              <p className="text-red-600 text-sm">{errors.margin_pct}</p>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => handleChange("is_active", e.target.checked)}
+            />
+            <label>Active</label>
+          </div>
+          {process.includes("injection") && (
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1" title="Clamp force in tons">
+                  Clamp tonnage
+                </label>
+                <input
+                  type="number"
+                  className="border rounded p-2 w-full"
+                  value={form.clamp_tonnage}
+                  onChange={(e) =>
+                    handleChange("clamp_tonnage", Number(e.target.value))
+                  }
+                />
+                {errors.clamp_tonnage && (
+                  <p className="text-red-600 text-sm">{errors.clamp_tonnage}</p>
+                )}
+              </div>
+              <div>
+                <label className="block mb-1" title="Shot volume in cubic centimeters">
+                  Shot volume (cc)
+                </label>
+                <input
+                  type="number"
+                  className="border rounded p-2 w-full"
+                  value={form.shot_volume_cc}
+                  onChange={(e) =>
+                    handleChange("shot_volume_cc", Number(e.target.value))
+                  }
+                />
+                {errors.shot_volume_cc && (
+                  <p className="text-red-600 text-sm">{errors.shot_volume_cc}</p>
+                )}
+              </div>
+            </div>
+          )}
+          {process.includes("casting") && (
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1" title="Max part weight in kilograms">
+                  Max cast weight (kg)
+                </label>
+                <input
+                  type="number"
+                  className="border rounded p-2 w-full"
+                  value={form.max_cast_weight_kg}
+                  onChange={(e) =>
+                    handleChange("max_cast_weight_kg", Number(e.target.value))
+                  }
+                />
+                {errors.max_cast_weight_kg && (
+                  <p className="text-red-600 text-sm">{errors.max_cast_weight_kg}</p>
+                )}
+              </div>
+              <div>
+                <label className="block mb-1" title="Mold size in millimeters">
+                  Mold size (mm)
+                </label>
+                <input
+                  type="number"
+                  className="border rounded p-2 w-full"
+                  value={form.mold_size_mm}
+                  onChange={(e) =>
+                    handleChange("mold_size_mm", Number(e.target.value))
+                  }
+                />
+                {errors.mold_size_mm && (
+                  <p className="text-red-600 text-sm">{errors.mold_size_mm}</p>
+                )}
+              </div>
+            </div>
+          )}
+          {process.includes("injection") || process.includes("casting") ? null : (
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1" title="Number of controllable axes">
+                  Axis count
+                </label>
+                <input
+                  type="number"
+                  className="border rounded p-2 w-full"
+                  value={form.axis_count}
+                  onChange={(e) =>
+                    handleChange("axis_count", Number(e.target.value))
+                  }
+                />
+                {errors.axis_count && (
+                  <p className="text-red-600 text-sm">{errors.axis_count}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block mb-1" title="X travel in millimeters">
+                    X (mm)
+                  </label>
+                  <input
+                    type="number"
+                    className="border rounded p-2 w-full"
+                    value={form.envelope_mm_x}
+                    onChange={(e) =>
+                      handleChange("envelope_mm_x", Number(e.target.value))
+                    }
+                  />
+                  {errors.envelope_mm_x && (
+                    <p className="text-red-600 text-sm">
+                      {errors.envelope_mm_x}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-1" title="Y travel in millimeters">
+                    Y (mm)
+                  </label>
+                  <input
+                    type="number"
+                    className="border rounded p-2 w-full"
+                    value={form.envelope_mm_y}
+                    onChange={(e) =>
+                      handleChange("envelope_mm_y", Number(e.target.value))
+                    }
+                  />
+                  {errors.envelope_mm_y && (
+                    <p className="text-red-600 text-sm">
+                      {errors.envelope_mm_y}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-1" title="Z travel in millimeters">
+                    Z (mm)
+                  </label>
+                  <input
+                    type="number"
+                    className="border rounded p-2 w-full"
+                    value={form.envelope_mm_z}
+                    onChange={(e) =>
+                      handleChange("envelope_mm_z", Number(e.target.value))
+                    }
+                  />
+                  {errors.envelope_mm_z && (
+                    <p className="text-red-600 text-sm">
+                      {errors.envelope_mm_z}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           <button
-            className="px-2 py-1 border rounded"
-            onClick={() => setMonth(addMonths(month, -1))}
+            onClick={save}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
           >
-            Prev
-          </button>
-          <span>{format(month, "MMMM yyyy")}</span>
-          <button
-            className="px-2 py-1 border rounded"
-            onClick={() => setMonth(addMonths(month, 1))}
-          >
-            Next
+            Save
           </button>
         </div>
-        <table className="min-w-full border">
-          <thead>
-            <tr>
-              <th className="border px-2 py-1 text-left">Day</th>
-              <th className="border px-2 py-1 text-left">Minutes Available</th>
-              <th className="border px-2 py-1 text-left">Minutes Reserved</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eachDayOfInterval({ start: month, end: endOfMonth(month) }).map(
-              (d) => {
-                const key = format(d, "yyyy-MM-dd");
-                const cap = capacity[key] || {};
-                return (
-                  <tr key={key}>
-                    <td className="border px-2 py-1">{key}</td>
-                    <td className="border px-2 py-1">
-                      <input
-                        type="number"
-                        className="w-24 border px-1 py-0.5"
-                        value={cap.minutes_available ?? ""}
-                        onChange={(e) =>
-                          setCapacity((prev) => ({
-                            ...prev,
-                            [key]: {
-                              ...cap,
-                              minutes_available: Number(e.target.value),
-                            },
-                          }))
-                        }
-                        onBlur={(e) => {
-                          const val = Number(e.target.value) || 0;
-                          const payload = {
-                            machine_id: machine.id,
-                            day: key,
-                            minutes_available: val,
-                            minutes_reserved: cap.minutes_reserved || 0,
-                          };
-                          fetch("/api/capacity/days", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload),
-                          });
-                        }}
-                      />
-                    </td>
-                    <td className="border px-2 py-1">
-                      <input
-                        type="number"
-                        className="w-24 border px-1 py-0.5"
-                        value={cap.minutes_reserved ?? ""}
-                        onChange={(e) =>
-                          setCapacity((prev) => ({
-                            ...prev,
-                            [key]: {
-                              ...cap,
-                              minutes_reserved: Number(e.target.value),
-                            },
-                          }))
-                        }
-                        onBlur={(e) => {
-                          const val = Number(e.target.value) || 0;
-                          const payload = {
-                            machine_id: machine.id,
-                            day: key,
-                            minutes_available: cap.minutes_available || 0,
-                            minutes_reserved: val,
-                          };
-                          fetch("/api/capacity/days", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload),
-                          });
-                        }}
-                      />
-                    </td>
-                  </tr>
-                );
-              }
+      )}
+      {tab === "test" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1" title="Part volume in cubic millimeters">
+              Volume mm³
+            </label>
+            <input
+              type="number"
+              className="border rounded p-2 w-full"
+              value={sim.volume_mm3}
+              onChange={(e) => setSim({ ...sim, volume_mm3: e.target.value })}
+            />
+            {simErrors.volume_mm3 && (
+              <p className="text-red-600 text-sm">{simErrors.volume_mm3}</p>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+          <div>
+            <label className="block mb-1" title="Surface area in square millimeters">
+              Surface area mm²
+            </label>
+            <input
+              type="number"
+              className="border rounded p-2 w-full"
+              value={sim.surface_area_mm2}
+              onChange={(e) =>
+                setSim({ ...sim, surface_area_mm2: e.target.value })
+              }
+            />
+            {simErrors.surface_area_mm2 && (
+              <p className="text-red-600 text-sm">
+                {simErrors.surface_area_mm2}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block mb-1">Quantity</label>
+            <input
+              type="number"
+              className="border rounded p-2 w-full"
+              value={sim.quantity}
+              onChange={(e) => setSim({ ...sim, quantity: Number(e.target.value) })}
+            />
+            {simErrors.quantity && (
+              <p className="text-red-600 text-sm">{simErrors.quantity}</p>
+            )}
+          </div>
+          <button
+            onClick={runSim}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
+            type="button"
+          >
+            Simulate
+          </button>
+          {breakdown && (
+            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+              {JSON.stringify(breakdown, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

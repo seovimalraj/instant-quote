@@ -18,6 +18,7 @@ interface DataTableProps {
   schema: ZodSchema<any>;
   fields: Field[];
   filterKey?: string;
+  filterPlaceholder?: string;
   select?: string;
   eqFilters?: Record<string, any>;
   insertDefaults?: Record<string, any>;
@@ -35,6 +36,7 @@ export default function DataTable({
   schema,
   fields,
   filterKey = "name",
+  filterPlaceholder = "Filter",
   select,
   eqFilters,
   insertDefaults,
@@ -216,7 +218,7 @@ export default function DataTable({
       <div className="flex justify-between mb-4">
         <input
           className="border px-2 py-1 rounded"
-          placeholder="Filter"
+          placeholder={filterPlaceholder}
           value={filter}
           onChange={(e) => {
             setFilter(e.target.value);
@@ -260,6 +262,9 @@ export default function DataTable({
           ))}
         </tbody>
       </table>
+      {tableInstance.getRowModel().rows.length === 0 && (
+        <p className="mt-2 text-sm">No results</p>
+      )}
       <div className="flex justify-between items-center mt-2">
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 0))}
