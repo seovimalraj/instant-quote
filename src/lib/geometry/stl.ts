@@ -87,4 +87,3 @@ export function parseSTL(data: ArrayBuffer | string): BufferGeometry {
   }
   return isBinary(data) ? parseBinary(data) : parseASCII(new TextDecoder().decode(new Uint8Array(data)));
 }
-

@@ -1,21 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addDays, formatISO } from "date-fns";
+import { addDays } from "date-fns";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { earliestSlot } from "@/lib/capacity";
+
+const querySchema = z.object({
+  machineId: z.string().uuid(),
+  minutes: z.coerce.number().min(1).max(20000),
+  expedite: z.coerce.boolean().optional(),
+  n: z.coerce.number().min(1).max(10).optional(),
+});
 
 // Provides upcoming available capacity dates for a machine.
 export async function GET(req: NextRequest) {
-  const machineId = req.nextUrl.searchParams.get("machineId");
-  if (!machineId) {
-    return NextResponse.json({ error: "machineId required" }, { status: 400 });
+  const supabase = createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const today = new Date();
-  const standard = Array.from({ length: 5 }, (_, i) =>
-    formatISO(addDays(today, i + 3), { representation: "date" })
-  );
-  const expedite = Array.from({ length: 5 }, (_, i) =>
-    formatISO(addDays(today, i + 1), { representation: "date" })
-  );
+  let params;
+  try {
+    params = querySchema.parse(Object.fromEntries(req.nextUrl.searchParams));
+  } catch (err: any) {
+    const msg = err?.errors?.[0]?.message ?? "Invalid request";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
 
-  return NextResponse.json({ machineId, standard, expedite });
+  const { machineId, minutes, expedite = false, n = 5 } = params;
+  const slots: { date: string; minutes: number }[] = [];
+  let start = addDays(new Date(), expedite ? 1 : 3);
+  for (let i = 0; i < n; i++) {
+    const slot = await earliestSlot({
+      machineId,
+      minutesRequired: minutes,
+      startDate: start,
+    });
+    if (!slot) break;
+    slots.push(slot);
+    start = addDays(new Date(slot.date), 1);
+  }
+
+  if (slots.length === 0) {
+    return NextResponse.json({ ok: false, reason: "no_capacity" }, {
+      status: 404,
+    });
+  }
+
+  return NextResponse.json({ ok: true, machineId, expedite, slots });
 }
 
