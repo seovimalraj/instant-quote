@@ -1,28 +1,17 @@
-// src/app/(customer)/order/page.tsx (or /orders/page.tsx if that's your route)
 export const runtime = "nodejs";
-
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-
-type SearchParams = Record<string, string | string[] | undefined>;
 
 const PAGE_SIZE = 10;
 
-export default async function OrdersPage(props: {
-  params?: any | Promise<any>;
-  searchParams?: SearchParams | Promise<SearchParams>;
+export default async function OrdersPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const searchParams: SearchParams = (await props?.searchParams) ?? {};
-
+  const sp = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    // If you prefer redirect, use requireAuth() earlier or Next redirect() here
-    return <div className="p-10">Please log in.</div>;
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return <div className="p-10">Please log in.</div>;
 
   const { data: customer } = await supabase
     .from("customers")
@@ -30,12 +19,7 @@ export default async function OrdersPage(props: {
     .eq("owner_id", user.id)
     .single();
 
-  // normalize page query (string | string[] | undefined)
-  const rawPage = searchParams.page;
-  const pageStr =
-    typeof rawPage === "string" ? rawPage : Array.isArray(rawPage) ? rawPage[0] : "1";
-  const page = Math.max(1, Number.isFinite(Number(pageStr)) ? Number(pageStr) : 1);
-
+  const page = Number(sp.page ?? "1");
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
@@ -52,17 +36,14 @@ export default async function OrdersPage(props: {
       <ul className="space-y-2">
         {orders?.map((o) => (
           <li key={o.id} className="border p-4 rounded">
-            <Link href={`/order/${o.id}`} className="text-blue-600 underline">
-              {o.id}
-            </Link>
+            <a href={`/order/${o.id}`} className="text-blue-600 underline">{o.id}</a>
             <p className="text-sm">Status: {o.status}</p>
             <p className="text-sm">Total: {o.total}</p>
           </li>
         ))}
-        {!orders?.length && (
-          <li className="text-sm text-gray-500">No orders</li>
-        )}
+        {!orders?.length && (<li className="text-sm text-gray-500">No orders</li>)}
       </ul>
     </div>
   );
 }
+
