@@ -1,6 +1,7 @@
 import type { PricingInput } from "./validators/pricing";
-import { addDays } from "date-fns";
+import { addDays, formatISO } from "date-fns";
 import { applyTeamDefaults } from "./dfm";
+import { createClient } from "./supabase/server";
 
 export interface LineItem {
   description: string;
@@ -35,15 +36,24 @@ export interface MachineFinishLink {
 }
 
 export interface PricingResult {
+  /** Quantity for this price result */
+  q: number;
+  /** Price per unit */
+  unit: number;
+  /** Subtotal before tax/shipping */
   subtotal: number;
   tax: number;
   shipping: number;
+  /** Total price including tax/shipping */
   total: number;
-  lead_time_days: number;
+  /** Detailed line items */
   lineItems: LineItem[];
-  breakdownJson: Record<string, number>;
+  /** Map of line item descriptions to amounts */
+  breakdown: Record<string, number>;
   machine_id?: string;
+  /** ISO string of the promised ship date */
   promise_date: string;
+  /** Minutes of machine capacity reserved */
   capacity_minutes_reserved: number;
 }
 
@@ -63,13 +73,48 @@ function defaultMachineFromRateCard(input: PricingInput): Machine {
   };
 }
 
-function priceWithMachine(
+async function computePromiseDate(
+  machine_id: string,
+  minutes: number,
+  lead_time: "standard" | "expedite"
+): Promise<string> {
+  const supabase = createClient();
+  const today = new Date();
+  const windowStart = lead_time === "expedite" ? 1 : 3;
+  const searchHorizon = 30;
+  const start = addDays(today, windowStart);
+  const end = addDays(today, windowStart + searchHorizon);
+  const defaultDate = addDays(today, lead_time === "expedite" ? 3 : 7);
+
+  const { data, error } = await supabase
+    .from("machine_capacity_days")
+    .select("day, minutes_available, minutes_reserved")
+    .eq("machine_id", machine_id)
+    .gte("day", formatISO(start, { representation: "date" }))
+    .lte("day", formatISO(end, { representation: "date" }))
+    .order("day");
+
+  if (error || !data) {
+    return defaultDate.toISOString();
+  }
+
+  for (const d of data) {
+    const avail = (d.minutes_available ?? 0) - (d.minutes_reserved ?? 0);
+    if (avail >= minutes) {
+      return new Date(d.day).toISOString();
+    }
+  }
+
+  return end.toISOString();
+}
+
+async function priceWithMachine(
   machine: Machine,
   input: PricingInput,
   materialMultiplier: number,
   finishMultiplier: number,
   carbonOffset?: boolean
-): PricingResult {
+): Promise<PricingResult> {
   const { geometry, material, finish, tolerance, quantity, rate_card, lead_time } = input;
   const lineItems: LineItem[] = [];
   const breakdown: Record<string, number> = {};
@@ -176,24 +221,30 @@ function priceWithMachine(
     breakdown.margin = marginAmt;
   }
 
-  const lead_time_days = lead_time === "expedite" ? 3 : 7;
-  const promise_date = addDays(new Date(), lead_time_days).toISOString();
+  const promise_date = await computePromiseDate(
+    machine.id,
+    time_minutes,
+    lead_time
+  );
+
+  const unit = total / quantity;
 
   return {
+    q: quantity,
+    unit,
     subtotal,
     tax,
     shipping,
     total,
-    lead_time_days,
     lineItems,
-    breakdownJson: breakdown,
+    breakdown,
     machine_id: machine.id,
     promise_date,
     capacity_minutes_reserved: time_minutes,
   };
 }
 
-export function priceItem(
+export async function priceItem(
   input: PricingInput & {
     machines: Machine[];
     machineMaterials?: MachineMaterialLink[];
@@ -201,7 +252,7 @@ export function priceItem(
     carbon_offset?: boolean;
     user?: { team_defaults?: Record<string, any> };
   }
-): PricingResult {
+): Promise<PricingResult> {
   const merged = input.user
     ? applyTeamDefaults<PricingInput>(input.user, input)
     : input;
@@ -245,7 +296,7 @@ export function priceItem(
 
   let best: PricingResult | null = null;
   for (const c of candidates) {
-    const res = priceWithMachine(
+    const res = await priceWithMachine(
       c.machine,
       merged,
       c.matMul,
@@ -260,7 +311,7 @@ export function priceItem(
   return best!;
 }
 
-export function priceTiers(
+export async function priceTiers(
   input: Omit<PricingInput, "quantity"> & {
     quantities: number[];
     machines: Machine[];
@@ -269,19 +320,19 @@ export function priceTiers(
     carbon_offset?: boolean;
     user?: { team_defaults?: Record<string, any> };
   }
-): Record<number, PricingResult> {
+): Promise<Record<number, PricingResult>> {
   const results: Record<number, PricingResult> = {};
   const sorted = [...input.quantities].sort((a, b) => a - b);
   let prevUnit: number | null = null;
   for (const q of sorted) {
-    const res = priceItem({ ...input, quantity: q });
-    let unit = res.total / q;
+    const res = await priceItem({ ...input, quantity: q });
+    let unit = res.unit;
     if (prevUnit !== null) {
       if (unit > prevUnit) {
         const newTotal = prevUnit * q;
         const diff = newTotal - res.total;
         res.lineItems.push({ description: "tier_adjustment", amount: diff });
-        res.breakdownJson.tier_adjustment = diff;
+        res.breakdown.tier_adjustment = diff;
         res.subtotal += diff;
         res.total = newTotal;
         unit = prevUnit;
@@ -290,19 +341,22 @@ export function priceTiers(
         const newTotal = capped * q;
         const diff = newTotal - res.total;
         res.lineItems.push({ description: "tier_adjustment", amount: diff });
-        res.breakdownJson.tier_adjustment = diff;
+        res.breakdown.tier_adjustment = diff;
         res.subtotal += diff;
         res.total = newTotal;
         unit = capped;
       }
     }
+    res.unit = unit;
     prevUnit = unit;
     results[q] = res;
   }
   return results;
 }
 
-export function calculatePricing(input: PricingInput): PricingResult {
+export async function calculatePricing(
+  input: PricingInput
+): Promise<PricingResult> {
   return priceItem({
     ...input,
     machines: [],
