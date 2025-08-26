@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cookiesAsync } from '@/lib/next/cookies'
 
 async function ensureProfile(user: User) {
   const supabaseAdmin = createAdminClient()
@@ -14,7 +14,7 @@ async function ensureProfile(user: User) {
 }
 
 export async function POST() {
-  const cookieStore = cookies()
+  const cookieStore = await cookiesAsync()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !anonKey) {

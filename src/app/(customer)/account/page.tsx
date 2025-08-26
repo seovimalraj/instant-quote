@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,7 +19,7 @@ export default async function AccountPage() {
 
   async function updateProfile(formData: FormData) {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -34,7 +34,7 @@ export default async function AccountPage() {
 
   async function updateCompany(formData: FormData) {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -56,7 +56,7 @@ export default async function AccountPage() {
 
   async function updateAddress(formData: FormData) {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -82,7 +82,7 @@ export default async function AccountPage() {
 
   async function updatePrefs(formData: FormData) {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function PaymentsAdminPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: payments } = await supabase
     .from("payments")
     .select("id,provider,amount,status,created_at")

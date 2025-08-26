@@ -1,7 +1,7 @@
 import { createClient } from "./supabase/server";
 
 export async function getKpis() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const now = new Date();
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(now.getDate() - 30);
@@ -53,7 +53,7 @@ export async function getKpis() {
 }
 
 export async function getFeeds() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [messagesRes, uploadsRes, workloadRes] = await Promise.all([
     supabase

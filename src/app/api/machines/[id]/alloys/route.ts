@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page") || "0", 10);
   const PAGE_SIZE = 10;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, count, error } = await supabase
     .from("machine_alloys")
     .select(
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machine_alloys")
     .insert({ ...body, machine_id: params.id })
@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("machine_alloys")
     .update(body)
@@ -96,7 +96,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("machine_alloys")
     .delete()

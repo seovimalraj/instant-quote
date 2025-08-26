@@ -14,7 +14,8 @@
     "db:apply": "psql \"$SUPABASE_DB_URL\" -f sql/schema.sql -f sql/policies.sql",
     "db:seed": "tsx db/seed.ts",
     "postinstall": "node scripts/postinstall.cjs",
-    "verify:view": "npm run build"
+    "verify:view": "npm run build",
+    "codemod:cookies": "node --experimental-modules scripts/codemods/next15-cookies.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^8.13.5",

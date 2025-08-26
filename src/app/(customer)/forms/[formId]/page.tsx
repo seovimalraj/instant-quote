@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default async function FormPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: form } = await supabase
     .from("custom_forms")
     .select("id,name,description,schema")
@@ -15,7 +15,7 @@ export default async function FormPage({ params }: Props) {
 
   async function submit(formData: FormData) {
     "use server";
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

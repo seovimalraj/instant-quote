@@ -7,7 +7,7 @@ interface Props {
 
 export default async function VendorDetailPage({ params }: Props) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: vendor } = await supabase
     .from("profiles")
     .select("id,full_name,email,role")

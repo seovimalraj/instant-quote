@@ -7,7 +7,7 @@ interface Props {
 
 export default async function CustomerDetailPage({ params }: Props) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: customer } = await supabase
     .from("customers")
     .select("*")
@@ -18,7 +18,7 @@ export default async function CustomerDetailPage({ params }: Props) {
     "use server";
     const name = formData.get("name") as string;
     const notes = formData.get("notes") as string;
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase
       .from("customers")
       .update({ name, notes })
