@@ -7,6 +7,8 @@ import { z } from "zod";
 import { calculatePricing, PricingResult } from "@/lib/pricing";
 import { Geometry } from "@/lib/validators/pricing";
 import { createClient } from "@/lib/supabase/client";
+import PriceExplainerModal, { BreakdownJson } from "./PriceExplainerModal";
+import { formatCurrency, BreakdownLine } from "./BreakdownRow";
 
 const formSchema = z.object({
   material_id: z.string(),
@@ -32,6 +34,7 @@ export default function InstantQuoteForm({ partId }: Props) {
   const [machines, setMachines] = useState<any[]>([]);
   const [rateCard, setRateCard] = useState<any | null>(null);
   const [price, setPrice] = useState<PricingResult | null>(null);
+  const [breakdown, setBreakdown] = useState<BreakdownJson | null>(null);
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: { quantity: 1, units: "mm", lead_time: "standard" },
@@ -105,6 +108,35 @@ export default function InstantQuoteForm({ partId }: Props) {
   const quantity = watch("quantity");
   const leadTime = watch("lead_time");
 
+  function buildBreakdown(pricing: PricingResult, currency: string): BreakdownJson {
+    const map: Record<string, { label: string; kind: BreakdownLine["kind"] }> = {
+      material: { label: "Material", kind: "material" },
+      machining: { label: "Machining", kind: "machining" },
+      setup_fee: { label: "Setup", kind: "setup" },
+      finish: { label: "Finish", kind: "finish" },
+      overhead: { label: "Overhead", kind: "overhead" },
+      expedite: { label: "Expedite", kind: "overhead" },
+      quantity_discount: { label: "Quantity Discount", kind: "overhead" },
+      carbon_offset: { label: "Carbon Offset", kind: "carbon" },
+      margin: { label: "Margin", kind: "margin" },
+      tier_adjustment: { label: "Tier Adjustment", kind: "overhead" },
+    };
+    const lines: BreakdownLine[] = [];
+    for (const [key, value] of Object.entries(pricing.breakdown)) {
+      if (key === "tax" || key === "shipping") continue;
+      const meta = map[key] || { label: key.replace(/_/g, " "), kind: "overhead" };
+      lines.push({ label: meta.label, value, kind: meta.kind });
+    }
+    return {
+      lines,
+      subtotal: pricing.subtotal,
+      tax: pricing.tax,
+      shipping: pricing.shipping,
+      total: pricing.total,
+      currency: (currency as any) || "USD",
+    };
+  }
+
   useEffect(() => {
     if (!part || !rateCard) return;
     const material = materials.find((m) => m.id === materialId);
@@ -163,6 +195,8 @@ export default function InstantQuoteForm({ partId }: Props) {
       rate_card: rc,
     });
     setPrice(pricing);
+    const currency = rateCard?.currency || "USD";
+    setBreakdown(buildBreakdown(pricing, currency));
   }, [
     materialId,
     finishId,
@@ -207,11 +241,16 @@ export default function InstantQuoteForm({ partId }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {price && (
-        <div className="p-4 bg-gray-100 rounded">
+      {price && breakdown && (
+        <div className="p-4 bg-gray-100 rounded space-y-2">
           <p className="text-lg font-medium">
-            Estimated Price: ${price.total.toFixed(2)}
+            Estimated Price: {formatCurrency(price.total, breakdown.currency)}
           </p>
+          <PriceExplainerModal
+            breakdownJson={breakdown}
+            processKind={part.process_code}
+            leadTime={leadTime}
+          />
         </div>
       )}
 
