@@ -3,14 +3,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { ZodSchema } from "zod";
-
-export interface Field {
-  name: string;
-  label: string;
-  type: "text" | "number" | "select" | "checkbox" | "hidden";
-  options?: { value: string; label: string }[];
-  tooltip?: string;
-}
+import { Field } from "@/types/forms";
+export type { Field };
 
 interface ModalFormProps {
   open: boolean;
@@ -69,22 +63,20 @@ export default function ModalForm({
             {field.type !== "hidden" && (
               <label className="block text-sm font-medium mb-1">
                 {field.label}
-                {field.tooltip && (
-                  <span
-                    className="ml-1 text-gray-500 cursor-help"
-                    title={field.tooltip}
-                  >
-                    ?
-                  </span>
-                )}
               </label>
             )}
             {field.type === "select" && field.options ? (
               <select
-                {...register(field.name, { required: true })}
+                defaultValue={field.defaultValue}
+                {...register(
+                  field.name,
+                  field.required ? { required: true } : undefined
+                )}
                 className="border rounded p-2 w-full"
               >
-                <option value="">Select...</option>
+                <option value="">
+                  {field.placeholder ? field.placeholder : "Select..."}
+                </option>
                 {field.options.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -92,18 +84,31 @@ export default function ModalForm({
                 ))}
               </select>
             ) : field.type === "checkbox" ? (
-              <input type="checkbox" {...register(field.name)} />
+              <input
+                type="checkbox"
+                defaultChecked={field.defaultValue}
+                {...register(
+                  field.name,
+                  field.required ? { required: true } : undefined
+                )}
+              />
             ) : (
               <input
                 type={field.type}
+                defaultValue={field.defaultValue}
+                placeholder={field.placeholder}
                 {...register(field.name, {
                   valueAsNumber: field.type === "number" ? true : undefined,
+                  required: field.required,
                 })}
                 className={
                   field.type === "hidden" ? undefined : "border rounded p-2 w-full"
                 }
                 autoFocus={idx === 0}
               />
+            )}
+            {field.help && field.type !== "hidden" && (
+              <p className="text-gray-500 text-xs mt-1">{field.help}</p>
             )}
             {field.type !== "hidden" && errors[field.name] && (
               <p className="text-red-600 text-sm mt-1">

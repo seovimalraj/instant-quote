@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Field } from "@/types/forms";
 
 export default async function FinishesPage() {
   await requireAdmin();
@@ -42,19 +43,22 @@ function ClientPage() {
     { accessorKey: "cost_per_m2", header: "Cost/m2" },
   ];
 
-  const fields = [
+  const fields: Field[] = [
     {
       name: "process_code",
       label: "Process",
       type: "select",
-      options: processes.map((p) => ({ value: p.code, label: p.name })),
+      options: processes.map((p) => ({
+        value: p.code as string,
+        label: p.name as string,
+      })),
     },
     { name: "name", label: "Name", type: "text" },
     { name: "type", label: "Type", type: "text" },
     { name: "cost_per_m2", label: "Cost per m2", type: "number" },
     { name: "lead_time_days", label: "Lead time (days)", type: "number" },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   return (
     <div className="max-w-5xl mx-auto py-10">
