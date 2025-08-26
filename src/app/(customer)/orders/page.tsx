@@ -7,7 +7,7 @@ interface Props {
 const PAGE_SIZE = 10;
 
 export default async function OrdersPage({ searchParams }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

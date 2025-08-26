@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default async function QuotePage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: quote } = await supabase
     .from("quotes")
     .select("id,total,currency,quote_items(pricing_breakdown,process_code,lead_time_days)")

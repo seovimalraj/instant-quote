@@ -7,7 +7,7 @@ interface Props {
 
 export default async function OrderDetailPage({ params }: Props) {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
     .select("*")

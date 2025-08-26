@@ -38,7 +38,7 @@ export function CadViewer({
 
   useEffect(() => {
     if (!fileUrl) return;
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
     if (!ext) return;
     if (ext === 'sldprt') {
       setSldprt(true);

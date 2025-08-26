@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get("page") || "0", 10);
   const filterKey = searchParams.get("filterKey") || "profiles.full_name";
   const PAGE_SIZE = 10;
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("vendor_certifications")
     .select("*, profiles(full_name), certifications(name)", { count: "exact" })
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("vendor_certifications")
     .insert(body)
@@ -70,7 +70,7 @@ export async function PUT(req: Request) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("vendor_certifications")
     .update(body)
@@ -90,7 +90,7 @@ export async function DELETE(req: Request) {
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("vendor_certifications")
     .delete()

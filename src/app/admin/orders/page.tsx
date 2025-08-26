@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 
 export default async function AdminOrdersPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: orders } = await supabase
     .from("orders")
     .select("id,status,total,created_at")

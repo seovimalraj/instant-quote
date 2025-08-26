@@ -16,7 +16,7 @@ export async function loadOBJ(url: string): Promise<THREE.BufferGeometry> {
             geometries.push(geom);
           }
         });
-        const merged = BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+        const merged = BufferGeometryUtils.mergeGeometries(geometries, true);
         const geometry = BufferGeometryUtils.mergeVertices(merged);
         geometry.computeVertexNormals();
         resolve(geometry);

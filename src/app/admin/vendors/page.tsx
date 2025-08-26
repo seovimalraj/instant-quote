@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function VendorsAdminPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: vendors } = await supabase
     .from("profiles")
     .select("id,full_name,email")
@@ -13,7 +13,7 @@ export default async function VendorsAdminPage() {
   async function assignVendor(formData: FormData) {
     "use server";
     const userId = formData.get("user_id") as string;
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.from("profiles").update({ role: "vendor" }).eq("id", userId);
   }
 

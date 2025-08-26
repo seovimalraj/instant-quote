@@ -9,7 +9,7 @@ interface Props {
 
 export default async function MachineDetailPage({ params }: Props) {
   await requireAdmin();
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: machine } = await supabase
     .from("machines")
     .select("*")

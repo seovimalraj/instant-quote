@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function UsersAdminPage() {
   await requireAdmin();
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: users } = await supabase
     .from("profiles")
     .select("id,full_name,email,role")
@@ -13,7 +13,7 @@ export default async function UsersAdminPage() {
     "use server";
     const userId = formData.get("user_id") as string;
     const role = formData.get("role") as string;
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.from("profiles").update({ role }).eq("id", userId);
   }
 
