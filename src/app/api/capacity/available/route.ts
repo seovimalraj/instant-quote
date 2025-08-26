@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "date-fns";
 import { z } from "zod";
