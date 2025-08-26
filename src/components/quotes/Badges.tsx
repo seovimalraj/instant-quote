@@ -3,6 +3,8 @@
 interface Props {
   processKind?: string;
   leadTime?: "standard" | "expedite";
+  certifications?: string[];
+  tolerance?: string;
 }
 
 const processLabels: Record<string, string> = {
@@ -20,9 +22,9 @@ const leadLabels: Record<string, string> = {
   expedite: "Expedite",
 };
 
-export default function Badges({ processKind, leadTime }: Props) {
+export default function Badges({ processKind, leadTime, certifications, tolerance }: Props) {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap">
       {processKind && (
         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
           {processLabels[processKind] || processKind}
@@ -33,6 +35,19 @@ export default function Badges({ processKind, leadTime }: Props) {
           {leadLabels[leadTime] || leadTime}
         </span>
       )}
+      {tolerance && (
+        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
+          {tolerance}
+        </span>
+      )}
+      {certifications?.map((code) => (
+        <span
+          key={code}
+          className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium"
+        >
+          {code}
+        </span>
+      ))}
     </div>
   );
 }
