@@ -1,5 +1,5 @@
 export const runtime = 'nodejs'
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { createClient } from "@/lib/supabase/server";
 import { randomBytes } from "crypto";
 import { z } from "zod";

@@ -10,14 +10,10 @@ const files = globSync('src/app/api/**/route.{ts,tsx}', {
 
 for (const f of files) {
   let s = fs.readFileSync(f, 'utf8');
-
-  // Detect an existing runtime export (edge or nodejs)
   const hasRuntime = /(^|\n)\s*export\s+const\s+runtime\s*=\s*['"](edge|nodejs)['"]/.test(s);
-
   if (!hasRuntime) {
     s = "export const runtime = 'nodejs'\n" + s;
     fs.writeFileSync(f, s, 'utf8');
-    // eslint-disable-next-line no-console
     console.log('patched runtime=nodejs ->', f);
   }
 }
