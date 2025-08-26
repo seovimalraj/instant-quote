@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { calculatePricing } from "@/lib/pricing";

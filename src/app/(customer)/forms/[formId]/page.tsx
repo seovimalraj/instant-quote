@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { requireAuth } from '@/lib/auth';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 

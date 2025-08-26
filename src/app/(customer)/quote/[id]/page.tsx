@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PriceExplainerModal from "@/components/quotes/PriceExplainerModal";
