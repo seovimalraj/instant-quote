@@ -9,6 +9,7 @@ export interface Field {
   label: string;
   type: "text" | "number" | "select" | "checkbox" | "hidden";
   options?: { value: string; label: string }[];
+  tooltip?: string;
 }
 
 interface ModalFormProps {
@@ -68,6 +69,14 @@ export default function ModalForm({
             {field.type !== "hidden" && (
               <label className="block text-sm font-medium mb-1">
                 {field.label}
+                {field.tooltip && (
+                  <span
+                    className="ml-1 text-gray-500 cursor-help"
+                    title={field.tooltip}
+                  >
+                    ?
+                  </span>
+                )}
               </label>
             )}
             {field.type === "select" && field.options ? (
