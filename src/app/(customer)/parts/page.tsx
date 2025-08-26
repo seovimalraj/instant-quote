@@ -4,18 +4,24 @@ import { createClient } from "@/lib/supabase/server";
 const PAGE_SIZE = 20;
 
 export default async function PartsPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return <div className="p-10">Please log in.</div>;
+  }
+
   const page = Number(sp.page ?? "1");
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return <div className="p-10">Please log in.</div>;
 
   const { data: customer } = await supabase
     .from("customers")
@@ -30,7 +36,9 @@ export default async function PartsPage({
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (error) return <div className="p-10 text-red-600">{error.message}</div>;
+  if (error) {
+    return <div className="p-10 text-red-600">{error.message}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-10">
@@ -38,13 +46,18 @@ export default async function PartsPage({
       <ul className="space-y-2">
         {parts?.map((p) => (
           <li key={p.id} className="border p-4 rounded">
-            <a href={`/part/${p.id}`} className="text-blue-600 underline">{p.name || p.id}</a>
-            <p className="text-sm text-gray-600">Created: {new Date(p.created_at).toLocaleString()}</p>
+            <a href={`/part/${p.id}`} className="text-blue-600 underline">
+              {p.name || p.id}
+            </a>
+            <p className="text-sm text-gray-600">
+              Created: {new Date(p.created_at).toLocaleString()}
+            </p>
           </li>
         ))}
-        {!parts?.length && (<li className="text-sm text-gray-500">No parts</li>)}
+        {!parts?.length && (
+          <li className="text-sm text-gray-500">No parts</li>
+        )}
       </ul>
     </div>
   );
 }
-

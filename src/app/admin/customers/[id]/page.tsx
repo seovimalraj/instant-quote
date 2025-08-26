@@ -3,16 +3,17 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function CustomerDetailPage({ params }: Props) {
+  const pr = await params;
   await requireAdmin();
   const supabase = await createClient();
   const { data: customer } = await supabase
     .from("customers")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
 
   async function updateCustomer(formData: FormData) {
@@ -23,7 +24,7 @@ export default async function CustomerDetailPage({ params }: Props) {
     await supabase
       .from("customers")
       .update({ name, notes })
-      .eq("id", params.id);
+      .eq("id", pr.id);
   }
 
   return (

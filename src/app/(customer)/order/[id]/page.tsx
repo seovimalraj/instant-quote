@@ -6,7 +6,7 @@ export default async function OrderPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const pr = await params;
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,7 +19,7 @@ export default async function OrderPage({
     .select(
       "id,status,total,created_at,order_items(id,part_id,quantity,line_total)"
     )
-    .eq("id", id)
+    .eq("id", pr.id)
     .single();
 
   if (!order) {
