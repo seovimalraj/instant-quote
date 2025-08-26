@@ -99,6 +99,18 @@ drop policy if exists machine_finishes_admin_all on public.machine_finishes;
 create policy machine_finishes_admin_all on public.machine_finishes
   for all using (public.is_admin()) with check (public.is_admin());
 
+-- Machine resins (admin/staff only)
+alter table public.machine_resins enable row level security;
+drop policy if exists machine_resins_admin_all on public.machine_resins;
+create policy machine_resins_admin_all on public.machine_resins
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Machine alloys (admin/staff only)
+alter table public.machine_alloys enable row level security;
+drop policy if exists machine_alloys_admin_all on public.machine_alloys;
+create policy machine_alloys_admin_all on public.machine_alloys
+  for all using (public.is_admin()) with check (public.is_admin());
+
 -- Parts
 alter table public.parts enable row level security;
 drop policy if exists parts_owner_select on public.parts;
