@@ -3,16 +3,17 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function VendorDetailPage({ params }: Props) {
+  const pr = await params;
   await requireAdmin();
   const supabase = await createClient();
   const { data: vendor } = await supabase
     .from("profiles")
     .select("id,full_name,email,role")
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
 
   return (

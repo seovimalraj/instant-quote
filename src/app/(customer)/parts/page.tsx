@@ -2,12 +2,13 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 const PAGE_SIZE = 10;
 
 export default async function PartsPage({ searchParams }: Props) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,8 +18,8 @@ export default async function PartsPage({ searchParams }: Props) {
     return <div className="p-10">Please log in.</div>;
   }
 
-  const page = Number(searchParams.page ?? "1");
-  const q = typeof searchParams.q === "string" ? searchParams.q : "";
+  const page = Number(sp.page ?? "1");
+  const q = typeof sp.q === "string" ? sp.q : "";
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
