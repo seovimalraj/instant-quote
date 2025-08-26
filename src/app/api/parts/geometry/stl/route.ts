@@ -76,13 +76,14 @@ export async function POST(req: Request) {
     geom.bbox.max[2] - geom.bbox.min[2],
   ];
 
+  const currentMeta = part.meta ?? {};
   const { error: updErr } = await supabase
     .from('parts')
     .update({
       bbox: bboxSize,
       surface_area_mm2: geom.surfaceArea_mm2,
       volume_mm3: geom.volume_mm3,
-      units: geom.units,
+      meta: { ...currentMeta, units: geom.units },
     })
     .eq('id', partId);
   if (updErr) {

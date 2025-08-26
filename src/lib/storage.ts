@@ -18,3 +18,19 @@ export async function createSignedUploadUrl(
   }
   return data;
 }
+
+/** Upload a file to the `parts` bucket on the server. */
+export async function uploadToParts(
+  client: SupabaseClient,
+  path: string,
+  file: ArrayBuffer | Blob,
+  contentType: string,
+) {
+  const { data, error } = await client.storage
+    .from("parts")
+    .upload(path, file, { upsert: true, contentType });
+  if (error) {
+    throw error;
+  }
+  return data;
+}
