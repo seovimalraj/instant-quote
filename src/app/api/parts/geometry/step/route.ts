@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  const { partId, fileUrl, mesh } = body;
+  const partId = body.partId;
   const { data: part, error: partErr } = await supabase
     .from("parts")
     .select("meta")
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Part not found" }, { status: 404 });
   }
 
-  if (fileUrl && !mesh) {
+  if ("fileUrl" in body) {
     return NextResponse.json(
       {
         error: "STEP parsing not implemented. Please provide a faceted mesh.",
@@ -40,11 +40,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!mesh) {
+  if (!("mesh" in body)) {
     return NextResponse.json({ error: "Mesh data required" }, { status: 400 });
   }
 
-  const result = maxProjectedArea(mesh.tris);
+  const result = maxProjectedArea(body.mesh.tris);
 
   const currentMeta = part.meta ?? {};
   await supabase
