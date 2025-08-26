@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Field } from "@/types/forms";
 
 export default async function MaterialsPage() {
   await requireAdmin();
@@ -42,12 +43,15 @@ function ClientPage() {
     { accessorKey: "cost_per_kg", header: "Cost/kg" },
   ];
 
-  const fields = [
+  const fields: Field[] = [
     {
       name: "process_code",
       label: "Process",
       type: "select",
-      options: processes.map((p) => ({ value: p.code, label: p.name })),
+      options: processes.map((p) => ({
+        value: p.code as string,
+        label: p.name as string,
+      })),
     },
     { name: "name", label: "Name", type: "text" },
     { name: "density_kg_m3", label: "Density (kg/m3)", type: "number" },
@@ -58,7 +62,7 @@ function ClientPage() {
       type: "number",
     },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   const validate = async (values: any, existing?: any) => {
     const supabase = createClient();

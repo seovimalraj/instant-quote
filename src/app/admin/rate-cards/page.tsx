@@ -1,6 +1,7 @@
 import DataTable from "@/components/admin/DataTable";
 import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
+import { Field } from "@/types/forms";
 
 export default async function RateCardsPage() {
   await requireAdmin();
@@ -27,7 +28,7 @@ function ClientPage() {
     { accessorKey: "turning_rate_per_min", header: "Turning" },
   ];
 
-  const fields = [
+  const fields: Field[] = [
     { name: "region", label: "Region", type: "text" },
     { name: "currency", label: "Currency", type: "text" },
     {
@@ -46,7 +47,7 @@ function ClientPage() {
       type: "number",
     },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   return (
     <div className="max-w-5xl mx-auto py-10">

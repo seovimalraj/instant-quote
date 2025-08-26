@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { Field } from "@/types/forms";
 
 export default async function CertificationsPage() {
   await requireAdmin();
@@ -37,10 +38,10 @@ function ClientPage() {
     is_active: z.boolean().optional(),
   });
   const certColumns = [{ accessorKey: "name", header: "Name" }];
-  const certFields = [
+  const certFields: Field[] = [
     { name: "name", label: "Name", type: "text" },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   const vendorCertSchema = z.object({
     vendor_id: z.string().uuid(),
@@ -61,21 +62,27 @@ function ClientPage() {
         row.original.certifications?.name || row.original.certification_id,
     },
   ];
-  const vendorCertFields = [
+  const vendorCertFields: Field[] = [
     {
       name: "vendor_id",
       label: "Vendor",
       type: "select",
-      options: vendors.map((v) => ({ value: v.id, label: v.full_name })),
+      options: vendors.map((v) => ({
+        value: v.id as string,
+        label: v.full_name as string,
+      })),
     },
     {
       name: "certification_id",
       label: "Certification",
       type: "select",
-      options: certs.map((c) => ({ value: c.id, label: c.name })),
+      options: certs.map((c) => ({
+        value: c.id as string,
+        label: c.name as string,
+      })),
     },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   return (
     <div className="max-w-5xl mx-auto py-10 space-y-10">

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Field } from "@/types/forms";
 
 export default async function MachinesPage() {
   await requireAdmin();
@@ -52,18 +53,21 @@ function ClientPage() {
     { accessorKey: "margin_pct", header: "Margin %" },
   ];
 
-  const fields = [
+  const fields: Field[] = [
     { name: "name", label: "Name", type: "text" },
     {
       name: "process_code",
       label: "Process",
       type: "select",
-      options: processes.map((p) => ({ value: p.code, label: p.name })),
+      options: processes.map((p) => ({
+        value: p.code as string,
+        label: p.name as string,
+      })),
     },
     { name: "rate_per_min", label: "Rate/min", type: "number" },
     { name: "margin_pct", label: "Margin %", type: "number" },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   return (
     <div className="max-w-6xl mx-auto py-10">

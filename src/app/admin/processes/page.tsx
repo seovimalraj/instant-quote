@@ -1,6 +1,7 @@
 import DataTable from "@/components/admin/DataTable";
 import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
+import { Field } from "@/types/forms";
 
 export default async function ProcessesPage() {
   await requireAdmin();
@@ -21,11 +22,11 @@ function ClientPage() {
     { accessorKey: "name", header: "Name" },
   ];
 
-  const fields = [
+  const fields: Field[] = [
     { name: "code", label: "Code", type: "text" },
     { name: "name", label: "Name", type: "text" },
     { name: "is_active", label: "Active", type: "checkbox" },
-  ];
+  ] as const;
 
   return (
     <div className="max-w-4xl mx-auto py-10">
