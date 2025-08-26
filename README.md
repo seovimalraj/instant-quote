@@ -1,6 +1,6 @@
 # Instant Quote
 
-A Next.js application providing instant manufacturing quotes. This guide covers local development, database setup, and deployment.
+A Next.js application providing instant manufacturing quotes. This guide covers local development, database setup, testing, and deployment.
 
 ## Local Development
 
@@ -35,6 +35,17 @@ npm run dev
 | `RESEND_API_KEY` |  | Resend API key |
 | `PAYPAL_CLIENT_ID` |  | PayPal client ID (payments currently stubbed) |
 | `PAYPAL_SECRET` |  | PayPal secret |
+| `DEMO_MODE` |  | When set, disables external integrations and seeds demo data |
+
+## Vercel Environments
+
+| Vercel context | Env file | Notes |
+| --- | --- | --- |
+| Development | `.env.local` | Used for `next dev` and `vercel dev` |
+| Preview | `.env.preview` | Automatically applied to preview deployments |
+| Production | `.env.production` | Used for production deployments |
+
+Set `DEMO_MODE=true` in any environment to run without external side effects.
 
 ## Database
 
@@ -54,6 +65,14 @@ export SUPABASE_SERVICE_ROLE_KEY="service-role-key"
 npm run db:seed
 ```
 
+## Testing
+
+```bash
+npm run lint      # verify
+npm run db:seed   # seed
+npm run e2e       # end-to-end tests (TODO)
+```
+
 ## Deployment
 
 The project targets **Node.js 22**. Vercel respects the `engines` field and `.nvmrc`; no extra config needed. Configure your Vercel project with the same environment variables:
@@ -64,7 +83,9 @@ vercel env pull .env.local
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 ```
 
-## Known Limitations
+## Known Limitations and TODOs
 
 - STEP/IGES viewer is a placeholder; real CAD visualization is not implemented.
 - Payment flows (Stripe/PayPal) are stubs and do not charge real money.
+- No automated end-to-end tests; `npm run e2e` is a placeholder.
+- Additional verification scripts and broader test coverage are TODOs.
