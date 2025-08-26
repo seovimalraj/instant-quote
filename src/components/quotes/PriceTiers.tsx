@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { calculatePricing, PricingResult } from "@/lib/pricing";
 import { Geometry } from "@/lib/validators/pricing";
-
+// Buttons to display price for preset quantity tiers.
 const TIERS = [1, 2, 5, 10, 25, 50, 100];
 
 interface Props {

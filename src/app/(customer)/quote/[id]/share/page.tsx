@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
+// Public read-only view for shared quotes using a temporary token.
 interface Props {
   params: { id: string };
   searchParams: { token?: string };

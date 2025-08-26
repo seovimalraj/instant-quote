@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 
+// API route to generate temporary share tokens for quotes.
 const schema = z.object({
   quote_id: z.string().uuid(),
 });

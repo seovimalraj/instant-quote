@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+// Modal to display a pricing breakdown and total from a JSON object.
 interface PriceBreakdown {
   material?: number;
   machining?: number;
@@ -16,13 +17,13 @@ interface PriceBreakdown {
 }
 
 interface Props {
-  breakdown: PriceBreakdown;
+  breakdownJson: PriceBreakdown;
 }
 
-export default function PriceExplainerModal({ breakdown }: Props) {
+export default function PriceExplainerModal({ breakdownJson }: Props) {
   const [open, setOpen] = useState(false);
 
-  const entries = Object.entries(breakdown).filter(
+  const entries = Object.entries(breakdownJson).filter(
     ([, value]) => typeof value === "number"
   );
 
