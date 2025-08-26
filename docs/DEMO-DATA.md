@@ -3,18 +3,17 @@
 The seed scripts provide a minimal dataset for demonstrating the quoting and order flow.
 
 ## Catalogs
-- **Processes:** CNC Milling, CNC Turning, Injection Molding, Casting
-- **Materials:** Aluminum 6061 (metal), Stainless Steel 304 (alloy), Nylon 12 (resin), Zamak 3 (alloy)
-- **Finishes:** Anodized, Polished, As Cast
-- **Tolerances:** Standard and High for milling, Standard for turning
+- **Processes:** CNC Milling, Injection Molding, Casting
+- **Materials:** Aluminum 6061, Stainless Steel 304, ABS, Aluminum A356
+- **Tolerances:** ISO 2768-m and ISO 2768-f
+- **Certifications:** ISO 9001, AS9100, ITAR
 - **Rate Card:** US-East region with USD pricing
 
 ## Machines
-- HAAS VF-2SS – 3‑axis milling
-- Hermle C42 – 5‑axis milling
-- Mazak Quick Turn – turning center
-- Arburg 200T – 200 ton injection press
-- Buhler Casting Line – die casting
+- 3-Axis Mill
+- 5-Axis Mill
+- 200T Press
+- Casting Line
 
 Each machine is linked to compatible materials/finishes and given 30 days of 8‑hour capacity.
 
@@ -22,10 +21,13 @@ Each machine is linked to compatible materials/finishes and given 30 days of 8�
 - `admin@example.com` – administrator
 - `buyer@example.com` – customer for **Acme Corp**
 
-## Sample Flow
-1. Part `fixture1.stl` uploaded for Acme Corp.
-2. Three quotes created (draft, sent, accepted) with corresponding quote items.
-3. Conversation on accepted quote shows customer and staff messages.
-4. Accepted quote generates an order with one order item.
+## Sample Data
+Three sample parts are seeded with preview images:
+
+1. `cube.stl` – CNC milling with a DFM report and generated QAP.
+2. `bracket.obj` – CNC milling.
+3. `housing.step` – Casting.
+
+One accepted quote includes price breakdown and messages, and an order is created from it.
 
 Run `npm run db:seed` to populate the data or `tsx scripts/reset-demo.ts` to reset the demo environment.

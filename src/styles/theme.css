@@ -1,11 +1,43 @@
 :root {
-  --color-brand: #0057ff;
+  --color-brand: #2563eb;
   --color-background: #f8fafc;
   --color-foreground: #0f172a;
   --color-muted: #6b7280;
+  --color-card: #ffffff;
+  --color-card-border: #e2e8f0;
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-card-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.badge-process {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.badge-cert {
+  background: var(--color-card-border);
+  color: var(--color-foreground);
+}
+
+.badge-tolerance {
+  background: #dbeafe;
+  color: #1e3a8a;
 }

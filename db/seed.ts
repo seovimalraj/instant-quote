@@ -39,9 +39,9 @@ export async function seed() {
   // Materials
   const { error: matErr } = await supabase.from('materials').upsert([
     { process_code: 'cnc_milling', name: 'Aluminum 6061', category: 'metal', density_kg_m3: 2700, cost_per_kg: 6 },
-    { process_code: 'cnc_turning', name: 'Stainless Steel 304', category: 'alloy', density_kg_m3: 8000, cost_per_kg: 8 },
-    { process_code: 'injection_molding', name: 'Nylon 12', category: 'resin', density_kg_m3: 1010, cost_per_kg: 3 },
-    { process_code: 'casting', name: 'Zamak 3', category: 'alloy', density_kg_m3: 6800, cost_per_kg: 5 }
+    { process_code: 'cnc_milling', name: 'Stainless Steel 304', category: 'alloy', density_kg_m3: 8000, cost_per_kg: 8 },
+    { process_code: 'injection_molding', name: 'ABS', category: 'resin', density_kg_m3: 1040, cost_per_kg: 2.5 },
+    { process_code: 'casting', name: 'Aluminum A356', category: 'alloy', density_kg_m3: 2680, cost_per_kg: 5 }
   ], { onConflict: 'process_code,name' });
   if (matErr) throw matErr;
 
@@ -55,11 +55,18 @@ export async function seed() {
 
   // Tolerances
   const { error: tolErr } = await supabase.from('tolerances').upsert([
-    { process_code: 'cnc_milling', name: 'Standard', tol_min_mm: -0.1, tol_max_mm: 0.1, cost_multiplier: 1 },
-    { process_code: 'cnc_milling', name: 'High', tol_min_mm: -0.05, tol_max_mm: 0.05, cost_multiplier: 1.2 },
-    { process_code: 'cnc_turning', name: 'Standard', tol_min_mm: -0.1, tol_max_mm: 0.1, cost_multiplier: 1 }
+    { process_code: 'cnc_milling', name: 'ISO 2768-m', tol_min_mm: -0.1, tol_max_mm: 0.1, cost_multiplier: 1 },
+    { process_code: 'cnc_milling', name: 'ISO 2768-f', tol_min_mm: -0.05, tol_max_mm: 0.05, cost_multiplier: 1.2 }
   ], { onConflict: 'process_code,name' });
   if (tolErr) throw tolErr;
+
+  // Certifications
+  const { error: certErr } = await supabase.from('certifications').upsert([
+    { code: 'iso9001', name: 'ISO 9001' },
+    { code: 'as9100', name: 'AS9100' },
+    { code: 'itar', name: 'ITAR' }
+  ], { onConflict: 'code' });
+  if (certErr) throw certErr;
 
   // Rate card
   const { error: rateErr } = await supabase.from('rate_cards').upsert([{
@@ -96,11 +103,10 @@ export async function seed() {
 
   // Machines
   const { data: machines, error: machErr } = await supabase.from('machines').upsert([
-    { name: 'HAAS VF-2SS', process_code: 'cnc_milling', process_kind: 'cnc_milling', axis_count: 3, rate_per_min: 1.2, setup_fee: 50 },
-    { name: 'Hermle C42', process_code: 'cnc_milling', process_kind: 'cnc_milling', axis_count: 5, rate_per_min: 1.6, setup_fee: 75 },
-    { name: 'Mazak Quick Turn', process_code: 'cnc_turning', process_kind: 'cnc_turning', axis_count: 2, rate_per_min: 1.0, setup_fee: 40 },
-    { name: 'Arburg 200T', process_code: 'injection_molding', process_kind: 'injection_molding', axis_count: 0, rate_per_min: 0.03, setup_fee: 100 },
-    { name: 'Buhler Casting Line', process_code: 'casting', process_kind: 'casting', axis_count: 0, rate_per_min: 0.05, setup_fee: 200 }
+    { name: '3-Axis Mill', process_code: 'cnc_milling', process_kind: 'cnc_milling', axis_count: 3, rate_per_min: 1.2, setup_fee: 50 },
+    { name: '5-Axis Mill', process_code: 'cnc_milling', process_kind: 'cnc_milling', axis_count: 5, rate_per_min: 1.6, setup_fee: 75 },
+    { name: '200T Press', process_code: 'injection_molding', process_kind: 'injection_molding', axis_count: 0, rate_per_min: 0.03, setup_fee: 100 },
+    { name: 'Casting Line', process_code: 'casting', process_kind: 'casting', axis_count: 0, rate_per_min: 0.05, setup_fee: 200 }
   ], { onConflict: 'name' }).select();
   if (machErr) throw machErr;
 
@@ -113,37 +119,34 @@ export async function seed() {
 
   const aluminumId = materials?.find(m => m.name === 'Aluminum 6061')?.id;
   const steelId = materials?.find(m => m.name === 'Stainless Steel 304')?.id;
-  const nylonId = materials?.find(m => m.name === 'Nylon 12')?.id;
-  const zamakId = materials?.find(m => m.name === 'Zamak 3')?.id;
+  const absId = materials?.find(m => m.name === 'ABS')?.id;
+  const a356Id = materials?.find(m => m.name === 'Aluminum A356')?.id;
 
   const anodizedId = finishes?.find(f => f.name === 'Anodized')?.id;
-  const polishedId = finishes?.find(f => f.name === 'Polished')?.id;
   const asCastId = finishes?.find(f => f.name === 'As Cast')?.id;
 
   if (aluminumId && steelId) {
     await supabase.from('machine_materials').upsert([
-      { machine_id: machineMap['HAAS VF-2SS'], material_id: aluminumId },
-      { machine_id: machineMap['Hermle C42'], material_id: aluminumId },
-      { machine_id: machineMap['Hermle C42'], material_id: steelId },
-      { machine_id: machineMap['Mazak Quick Turn'], material_id: steelId }
+      { machine_id: machineMap['3-Axis Mill'], material_id: aluminumId },
+      { machine_id: machineMap['5-Axis Mill'], material_id: aluminumId },
+      { machine_id: machineMap['5-Axis Mill'], material_id: steelId }
     ]);
   }
-  if (nylonId) {
+  if (absId) {
     await supabase.from('machine_resins').upsert([
-      { machine_id: machineMap['Arburg 200T'], material_id: nylonId }
+      { machine_id: machineMap['200T Press'], material_id: absId }
     ]);
   }
-  if (zamakId) {
+  if (a356Id) {
     await supabase.from('machine_alloys').upsert([
-      { machine_id: machineMap['Buhler Casting Line'], material_id: zamakId }
+      { machine_id: machineMap['Casting Line'], material_id: a356Id }
     ]);
   }
-  if (anodizedId && polishedId && asCastId) {
+  if (anodizedId && asCastId) {
     await supabase.from('machine_finishes').upsert([
-      { machine_id: machineMap['HAAS VF-2SS'], finish_id: anodizedId },
-      { machine_id: machineMap['Hermle C42'], finish_id: anodizedId },
-      { machine_id: machineMap['Mazak Quick Turn'], finish_id: polishedId },
-      { machine_id: machineMap['Buhler Casting Line'], finish_id: asCastId }
+      { machine_id: machineMap['3-Axis Mill'], finish_id: anodizedId },
+      { machine_id: machineMap['5-Axis Mill'], finish_id: anodizedId },
+      { machine_id: machineMap['Casting Line'], finish_id: asCastId }
     ]);
   }
 
@@ -162,19 +165,49 @@ export async function seed() {
     await supabase.from('machine_capacity_days').upsert(entries, { onConflict: 'machine_id,day' });
   }
 
-  // Part
-  const { data: partData, error: partErr } = await supabase.from('parts').upsert([{
-    id: '00000000-0000-0000-0000-000000000020',
-    owner_id: buyerId,
-    customer_id: customerId,
-    file_url: 'https://example.com/fixture1.stl',
-    file_name: 'fixture1.stl',
-    file_ext: 'stl',
-    size_bytes: 123456,
-    process_code: 'cnc_milling'
-  }], { onConflict: 'id' }).select().single();
+  // Parts
+  const { data: partsData, error: partErr } = await supabase.from('parts').upsert([
+    {
+      id: '00000000-0000-0000-0000-000000000021',
+      owner_id: buyerId,
+      customer_id: customerId,
+      file_url: 'https://example.com/cube.stl',
+      file_name: 'cube.stl',
+      file_ext: 'stl',
+      size_bytes: 1024,
+      process_code: 'cnc_milling',
+      preview_url: 'https://example.com/cube.png',
+      dfm: {
+        report_url: 'https://example.com/dfm/cube-report.pdf',
+        overlays: [{ rule: 'thin_wall', faces: [1, 2, 3] }],
+        qap_url: 'https://example.com/dfm/cube-qap.pdf',
+      },
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000022',
+      owner_id: buyerId,
+      customer_id: customerId,
+      file_url: 'https://example.com/bracket.obj',
+      file_name: 'bracket.obj',
+      file_ext: 'obj',
+      size_bytes: 2048,
+      process_code: 'cnc_milling',
+      preview_url: 'https://example.com/bracket.png',
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000023',
+      owner_id: buyerId,
+      customer_id: customerId,
+      file_url: 'https://example.com/housing.step',
+      file_name: 'housing.step',
+      file_ext: 'step',
+      size_bytes: 4096,
+      process_code: 'casting',
+      preview_url: 'https://example.com/housing.png',
+    },
+  ], { onConflict: 'id' }).select();
   if (partErr) throw partErr;
-  const partId = partData.id;
+  const partId = partsData?.[0]?.id;
 
   // Quotes
   const quotes = [
@@ -198,9 +231,8 @@ export async function seed() {
 
   // Quote items
   const { data: tolData } = await supabase.from('tolerances').select('id,name,process_code');
-  const tolStdMill = tolData?.find(t => t.name === 'Standard' && t.process_code === 'cnc_milling')?.id;
-  const tolStdTurn = tolData?.find(t => t.name === 'Standard' && t.process_code === 'cnc_turning')?.id;
-  const tolHighMill = tolData?.find(t => t.name === 'High' && t.process_code === 'cnc_milling')?.id;
+  const tolIsoM = tolData?.find(t => t.name === 'ISO 2768-m')?.id;
+  const tolIsoF = tolData?.find(t => t.name === 'ISO 2768-f')?.id;
 
   await supabase.from('quote_items').upsert([
     {
@@ -210,24 +242,11 @@ export async function seed() {
       process_code: 'cnc_milling',
       material_id: aluminumId,
       finish_id: anodizedId,
-      tolerance_id: tolStdMill,
+      tolerance_id: tolIsoM,
       quantity: 1,
       unit_price: 100,
       line_total: 100,
-      machine_id: machineMap['Hermle C42']
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000041',
-      quote_id: '00000000-0000-0000-0000-000000000031',
-      part_id: partId,
-      process_code: 'cnc_turning',
-      material_id: steelId,
-      finish_id: polishedId,
-      tolerance_id: tolStdTurn,
-      quantity: 1,
-      unit_price: 120,
-      line_total: 120,
-      machine_id: machineMap['Mazak Quick Turn']
+      machine_id: machineMap['5-Axis Mill']
     },
     {
       id: '00000000-0000-0000-0000-000000000042',
@@ -236,11 +255,11 @@ export async function seed() {
       process_code: 'cnc_milling',
       material_id: aluminumId,
       finish_id: anodizedId,
-      tolerance_id: tolHighMill,
+      tolerance_id: tolIsoF,
       quantity: 1,
       unit_price: 150,
       line_total: 150,
-      machine_id: machineMap['HAAS VF-2SS']
+      machine_id: machineMap['3-Axis Mill']
     }
   ], { onConflict: 'id' });
 
