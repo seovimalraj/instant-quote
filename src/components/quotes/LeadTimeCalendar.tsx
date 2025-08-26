@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+// Calendar view showing next promise dates for standard and expedite capacity.
 interface Availability {
   standard: string[];
   expedite: string[];

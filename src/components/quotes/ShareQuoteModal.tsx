@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+// Modal to generate a shareable read-only link for a quote.
 interface Props {
   quoteId: string;
 }

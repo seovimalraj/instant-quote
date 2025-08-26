@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addDays, formatISO } from "date-fns";
 
+// Provides upcoming available capacity dates for a machine.
 export async function GET(req: NextRequest) {
   const machineId = req.nextUrl.searchParams.get("machineId");
   if (!machineId) {
