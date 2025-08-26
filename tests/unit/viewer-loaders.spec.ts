@@ -21,26 +21,35 @@ function parseOBJ(data: string): BufferGeometry {
 describe('viewer loaders', () => {
   it('loads STL and computes metrics', () => {
     const stl = `solid cube\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid`;
-    const geom = parseSTL(stl);
-    geom.computeBoundingBox();
-    expect(geom.getAttribute('position').count).toBeGreaterThan(0);
-    expect(geom.boundingBox).toBeTruthy();
+    const arrayBuffer = new TextEncoder().encode(stl).buffer;
+    const geom = parseSTL(arrayBuffer);
+    expect(geom.surfaceArea_mm2).toBeCloseTo(322.58, 2);
+    expect(geom.volume_mm3).toBeCloseTo(0);
+    expect(geom.bbox.max[0]).toBeCloseTo(25.4);
   });
 
   it('loads OBJ and computes metrics', () => {
     const obj = `v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3`;
     const geom = parseOBJ(obj);
-    geom.computeBoundingBox();
-    expect(geom.getAttribute('position').count).toBeGreaterThan(0);
-    expect(geom.boundingBox).toBeTruthy();
+    const positions = geom.attributes.position.array as ArrayLike<number>;
+    let maxX = -Infinity;
+    for (let i = 0; i < positions.length; i += 3) {
+      if (positions[i] > maxX) maxX = positions[i];
+    }
+    expect(positions.length).toBeGreaterThan(0);
+    expect(maxX).toBeCloseTo(1);
   });
 
   it('loads STEP mesh and computes metrics', () => {
-    const tris = [0,0,0, 1,0,0, 0,1,0];
+    const tris = [0, 0, 0, 1, 0, 0, 0, 1, 0];
     const geom = new BufferGeometry();
     geom.setAttribute('position', new Float32BufferAttribute(tris, 3));
-    geom.computeBoundingBox();
-    expect(geom.getAttribute('position').count).toBe(3);
-    expect(geom.boundingBox).toBeTruthy();
+    const positions = geom.attributes.position.array as ArrayLike<number>;
+    let maxY = -Infinity;
+    for (let i = 0; i < positions.length; i += 3) {
+      if (positions[i + 1] > maxY) maxY = positions[i + 1];
+    }
+    expect(positions.length / 3).toBe(3);
+    expect(maxY).toBeCloseTo(1);
   });
 });
