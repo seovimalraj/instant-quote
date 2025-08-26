@@ -5,6 +5,15 @@ import { z } from "zod";
 
 const requestSchema = z.object({
   quoteId: z.string().uuid(),
+  itemId: z.string().uuid().optional(),
+  machineId: z.string().uuid().optional(),
+  overrides: z
+    .object({
+      rate_per_min: z.number().optional(),
+      setup_fee: z.number().optional(),
+      margin_pct: z.number().optional(),
+    })
+    .optional(),
 });
 
 export async function POST(req: Request) {
@@ -31,7 +40,15 @@ export async function POST(req: Request) {
     const message = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-  const { quoteId } = body;
+  const { quoteId, itemId, machineId, overrides } = body;
+
+  if (itemId && machineId) {
+    await supabase
+      .from("quote_items")
+      .update({ machine_id: machineId })
+      .eq("id", itemId)
+      .eq("quote_id", quoteId);
+  }
 
   const { data: rateCard } = await supabase
     .from("rate_cards")
@@ -55,17 +72,31 @@ export async function POST(req: Request) {
   let total = 0;
 
   for (const item of items) {
-    const [{ data: part }, { data: material }, { data: finish }, { data: tolerance }] =
-      await Promise.all([
-        supabase.from("parts").select("*").eq("id", item.part_id).single(),
-        supabase.from("materials").select("*").eq("id", item.material_id).single(),
-        item.finish_id
-          ? supabase.from("finishes").select("*").eq("id", item.finish_id).single()
-          : Promise.resolve({ data: null } as any),
-        item.tolerance_id
-          ? supabase.from("tolerances").select("*").eq("id", item.tolerance_id).single()
-          : Promise.resolve({ data: null } as any),
-      ]);
+    if (itemId && item.id === itemId && machineId) {
+      item.machine_id = machineId;
+    }
+
+    const [
+      { data: part },
+      { data: material },
+      { data: finish },
+      { data: tolerance },
+      machineRes,
+    ] = await Promise.all([
+      supabase.from("parts").select("*").eq("id", item.part_id).single(),
+      supabase.from("materials").select("*").eq("id", item.material_id).single(),
+      item.finish_id
+        ? supabase.from("finishes").select("*").eq("id", item.finish_id).single()
+        : Promise.resolve({ data: null } as any),
+      item.tolerance_id
+        ? supabase.from("tolerances").select("*").eq("id", item.tolerance_id).single()
+        : Promise.resolve({ data: null } as any),
+      item.machine_id
+        ? supabase.from("machines").select("*").eq("id", item.machine_id).single()
+        : Promise.resolve({ data: null } as any),
+    ]);
+
+    const machine = machineRes?.data ?? null;
 
     const geometry = {
       volume_mm3: part?.volume_mm3 ?? 0,
@@ -77,7 +108,27 @@ export async function POST(req: Request) {
       max_overhang_deg: part?.max_overhang_deg ?? undefined,
     };
 
-    const leadTime = item.lead_time_days && item.lead_time_days <= 3 ? "expedite" : "standard";
+    const leadTime =
+      item.lead_time_days && item.lead_time_days <= 3 ? "expedite" : "standard";
+
+    const existingOverrides =
+      (item.pricing_breakdown as any)?.overrides ?? {};
+    const appliedOverrides =
+      item.id === itemId
+        ? { ...existingOverrides, ...(overrides ?? {}) }
+        : existingOverrides;
+
+    const rateCardForItem: any = { ...(rateCard || {}) };
+    const rateKeyMap: Record<string, string> = {
+      cnc_milling: "three_axis_rate_per_min",
+      cnc_turning: "turning_rate_per_min",
+      sheet_metal: "laser_rate_per_min",
+    };
+    const rateKey = rateKeyMap[item.process_code as keyof typeof rateKeyMap];
+    const ratePerMin = appliedOverrides.rate_per_min ?? machine?.rate_per_min ?? 0;
+    if (rateKey) {
+      rateCardForItem[rateKey] = ratePerMin;
+    }
 
     const pricing = calculatePricing({
       process: item.process_code as any,
@@ -87,29 +138,54 @@ export async function POST(req: Request) {
       tolerance: tolerance || undefined,
       geometry,
       lead_time: leadTime,
-      rate_card: rateCard || {},
+      rate_card: rateCardForItem,
     });
+
+    const setupFee = appliedOverrides.setup_fee ?? machine?.setup_fee ?? 0;
+    const marginPct = appliedOverrides.margin_pct ?? machine?.margin_pct ?? 0;
+    const marginFactor = 1 + marginPct;
+
+    const itemSubtotal = (pricing.subtotal + setupFee) * marginFactor;
+    const itemTax = pricing.tax * marginFactor;
+    const itemShipping = pricing.shipping * marginFactor;
+    const itemTotal = itemSubtotal + itemTax + itemShipping;
+
+    const breakdown: any = { ...pricing.breakdownJson, overrides: appliedOverrides };
+    if (setupFee) breakdown.setup_fee = setupFee;
+    if (marginPct) breakdown.margin_pct = marginPct;
 
     await supabase
       .from("quote_items")
       .update({
-        unit_price: pricing.total / item.quantity,
-        line_total: pricing.total,
-        pricing_breakdown: pricing.breakdownJson,
+        machine_id: item.machine_id,
+        unit_price: itemTotal / item.quantity,
+        line_total: itemTotal,
+        pricing_breakdown: breakdown,
         lead_time_days: pricing.lead_time_days,
       })
       .eq("id", item.id);
 
-    subtotal += pricing.subtotal;
-    tax += pricing.tax;
-    shipping += pricing.shipping;
-    total += pricing.total;
+    subtotal += itemSubtotal;
+    tax += itemTax;
+    shipping += itemShipping;
+    total += itemTotal;
   }
 
   await supabase
     .from("quotes")
     .update({ subtotal, tax, shipping, total })
     .eq("id", quoteId);
+
+  await supabase.from("activities").insert({
+    actor_id: user.id,
+    quote_id: quoteId,
+    type: "quote_repriced",
+    data: {
+      item_id: itemId ?? null,
+      machine_id: machineId ?? null,
+      overrides: overrides ?? null,
+    },
+  });
 
   return NextResponse.json({ subtotal, tax, shipping, total });
 }
