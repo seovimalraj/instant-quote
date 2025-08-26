@@ -77,27 +77,43 @@ export async function POST(req: Request) {
   let geometry: Partial<ComputedGeometry> = {};
   if (clientGeom) {
     geometry = { ...clientGeom } as any;
-  } else if (part.file_ext?.toLowerCase() === ".stl") {
-    try {
-      const { data: file, error } = await supabase.storage
-        .from("parts")
-        .download(part.file_url);
-      if (error) throw error;
-      const arrayBuffer = await file.arrayBuffer();
-      const loader = new STLLoader();
-      const geom = loader.parse(arrayBuffer);
-      geometry = computeFromGeometry(geom);
-    } catch (e) {
-      console.error(e);
-      return NextResponse.json({ error: "Failed to compute geometry" }, { status: 500 });
-    }
-  } else {
-    // Unsupported format
+  } else if (
+    part.volume_mm3 !== null &&
+    part.surface_area_mm2 !== null &&
+    part.bbox !== null
+  ) {
     geometry = {
-      volume_mm3: part.volume_mm3 ?? 0,
-      surface_area_mm2: part.surface_area_mm2 ?? 0,
-      bbox: (part.bbox as any) ?? [0, 0, 0],
+      volume_mm3: part.volume_mm3,
+      surface_area_mm2: part.surface_area_mm2,
+      bbox: part.bbox as any,
     };
+  } else {
+    const ext = part.file_ext?.toLowerCase();
+    if (ext === ".stl") {
+      try {
+        const { data: file, error } = await supabase.storage
+          .from("parts")
+          .download(part.file_url);
+        if (error) throw error;
+        const arrayBuffer = await file.arrayBuffer();
+        const loader = new STLLoader();
+        const geom = loader.parse(arrayBuffer);
+        geometry = computeFromGeometry(geom);
+      } catch (e) {
+        console.error(e);
+        return NextResponse.json(
+          { error: "Failed to compute geometry" },
+          { status: 500 },
+        );
+      }
+    } else {
+      // For STEP/IGES or other formats use placeholders / existing values
+      geometry = {
+        volume_mm3: part.volume_mm3 ?? 0,
+        surface_area_mm2: part.surface_area_mm2 ?? 0,
+        bbox: (part.bbox as any) ?? [0, 0, 0],
+      };
+    }
   }
 
   const update: any = {};
