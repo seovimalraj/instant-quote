@@ -10,17 +10,22 @@ export async function loadDXF(
   const dxf = parser.parseSync(text);
 
   const positions: number[] = [];
-  const entities = dxf.entities || [];
+  const entities: any[] = Array.isArray(dxf.entities) ? dxf.entities : [];
 
   for (const e of entities) {
     if (e.type === 'LINE') {
-      positions.push(e.start.x, e.start.y, 0, e.end.x, e.end.y, 0);
+      const { start, end } = e;
+      if (start && end) {
+        positions.push(start.x, start.y, 0, end.x, end.y, 0);
+      }
     } else if (e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') {
-      const verts = e.vertices || [];
+      const verts = Array.isArray(e.vertices) ? e.vertices : [];
       for (let i = 0; i < verts.length - 1; i++) {
         const v1 = verts[i];
         const v2 = verts[i + 1];
-        positions.push(v1.x, v1.y, 0, v2.x, v2.y, 0);
+        if (v1 && v2) {
+          positions.push(v1.x, v1.y, 0, v2.x, v2.y, 0);
+        }
       }
     }
   }
