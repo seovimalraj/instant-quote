@@ -86,12 +86,25 @@ export async function POST(req: Request) {
       .insert({ order_id: order.id, step });
   }
 
-  await supabase.from("activities").insert({
-    actor_id: user.id,
-    quote_id: quoteId,
-    order_id: order.id,
-    type: "order_created",
-  });
+  await supabase
+    .from("quotes")
+    .update({ status: "accepted" })
+    .eq("id", quoteId);
+
+  await supabase.from("activities").insert([
+    {
+      actor_id: user.id,
+      quote_id: quoteId,
+      order_id: order.id,
+      type: "quote_accepted",
+    },
+    {
+      actor_id: user.id,
+      quote_id: quoteId,
+      order_id: order.id,
+      type: "order_created",
+    },
+  ]);
 
   return NextResponse.json({ orderId: order.id });
 }
