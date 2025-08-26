@@ -100,7 +100,7 @@ function ClientPage() {
     <div className="max-w-6xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-4">Machines</h1>
       <DataTable
-        table="machines"
+        endpoint="/api/machines"
         columns={columns}
         schema={schema}
         fields={fields}

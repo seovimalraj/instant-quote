@@ -12,7 +12,8 @@ import { createClient } from "@/lib/supabase/client";
 import ModalForm, { Field } from "./ModalForm";
 
 interface DataTableProps {
-  table: string;
+  table?: string;
+  endpoint?: string;
   columns: ColumnDef<any, any>[];
   schema: ZodSchema<any>;
   fields: Field[];
@@ -22,12 +23,14 @@ interface DataTableProps {
   insertDefaults?: Record<string, any>;
   initialValues?: any;
   onValidate?: (values: any, existing?: any) => Promise<string | null>;
+  idInQuery?: boolean;
 }
 
 const PAGE_SIZE = 10;
 
 export default function DataTable({
   table,
+  endpoint,
   columns,
   schema,
   fields,
@@ -37,6 +40,7 @@ export default function DataTable({
   insertDefaults,
   initialValues,
   onValidate,
+  idInQuery = false,
 }: DataTableProps) {
   const [data, setData] = useState<any[]>([]);
   const [filter, setFilter] = useState("");
@@ -46,11 +50,28 @@ export default function DataTable({
   const [editing, setEditing] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const supabase = table ? createClient() : null;
 
   const loadData = async () => {
-    let query = supabase
-      .from(table)
+    if (endpoint) {
+      const params = new URLSearchParams();
+      params.set("search", filter);
+      params.set("page", page.toString());
+      if (filterKey) params.set("filterKey", filterKey);
+      if (eqFilters) {
+        Object.entries(eqFilters).forEach(([k, v]) => {
+          params.set(k, String(v));
+        });
+      }
+      const res = await fetch(`${endpoint}?${params.toString()}`);
+      const json = await res.json();
+      setData(json.data || []);
+      setPageCount(json.count ? Math.ceil(json.count / PAGE_SIZE) : 0);
+      return;
+    }
+
+    let query = supabase!
+      .from(table!)
       .select(select || "*", { count: "exact" })
       .order(filterKey, { ascending: true })
       .ilike(filterKey, `%${filter}%`)
@@ -72,15 +93,31 @@ export default function DataTable({
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this item?")) return;
-    await supabase.from(table).delete().eq("id", id);
+    if (endpoint) {
+      const url = idInQuery ? `${endpoint}?id=${id}` : `${endpoint}/${id}`;
+      await fetch(url, { method: "DELETE" });
+    } else {
+      await supabase!.from(table!).delete().eq("id", id);
+    }
     loadData();
   };
 
   const toggleActive = async (row: any) => {
-    await supabase
-      .from(table)
-      .update({ is_active: !row.is_active })
-      .eq("id", row.id);
+    if (endpoint) {
+      const url = idInQuery
+        ? `${endpoint}?id=${row.id}`
+        : `${endpoint}/${row.id}`;
+      await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !row.is_active }),
+      });
+    } else {
+      await supabase!
+        .from(table!)
+        .update({ is_active: !row.is_active })
+        .eq("id", row.id);
+    }
     loadData();
   };
 
@@ -94,10 +131,32 @@ export default function DataTable({
           return;
         }
       }
-      if (editing) {
-        await supabase.from(table).update(parsed).eq("id", editing.id);
+      if (endpoint) {
+        if (editing) {
+          const url = idInQuery
+            ? `${endpoint}?id=${editing.id}`
+            : `${endpoint}/${editing.id}`;
+          await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(parsed),
+          });
+        } else {
+          await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...(insertDefaults || {}), ...parsed }),
+          });
+        }
+      } else if (editing) {
+        await supabase!
+          .from(table!)
+          .update(parsed)
+          .eq("id", editing.id);
       } else {
-        await supabase.from(table).insert({ ...(insertDefaults || {}), ...parsed });
+        await supabase!
+          .from(table!)
+          .insert({ ...(insertDefaults || {}), ...parsed });
       }
       setOpen(false);
       setEditing(null);

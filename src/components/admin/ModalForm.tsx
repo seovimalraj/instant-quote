@@ -63,7 +63,7 @@ export default function ModalForm({
         onSubmit={submit}
         className="bg-white rounded-md p-6 w-full max-w-md space-y-4"
       >
-        {fields.map((field) => (
+        {fields.map((field, idx) => (
           <div key={field.name}>
             {field.type !== "hidden" && (
               <label className="block text-sm font-medium mb-1">
@@ -93,6 +93,7 @@ export default function ModalForm({
                 className={
                   field.type === "hidden" ? undefined : "border rounded p-2 w-full"
                 }
+                autoFocus={idx === 0}
               />
             )}
             {field.type !== "hidden" && errors[field.name] && (
