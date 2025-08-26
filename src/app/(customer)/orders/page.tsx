@@ -1,20 +1,17 @@
+export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
-
-interface Props {
-  searchParams: { [key: string]: string | string[] | undefined };
-}
 
 const PAGE_SIZE = 10;
 
-export default async function OrdersPage({ searchParams }: Props) {
+export default async function OrdersPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return <div className="p-10">Please log in.</div>;
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return <div className="p-10">Please log in.</div>;
 
   const { data: customer } = await supabase
     .from("customers")
@@ -22,7 +19,7 @@ export default async function OrdersPage({ searchParams }: Props) {
     .eq("owner_id", user.id)
     .single();
 
-  const page = Number(searchParams.page ?? "1");
+  const page = Number(sp.page ?? "1");
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
@@ -39,16 +36,12 @@ export default async function OrdersPage({ searchParams }: Props) {
       <ul className="space-y-2">
         {orders?.map((o) => (
           <li key={o.id} className="border p-4 rounded">
-            <a href={`/order/${o.id}`} className="text-blue-600 underline">
-              {o.id}
-            </a>
+            <a href={`/order/${o.id}`} className="text-blue-600 underline">{o.id}</a>
             <p className="text-sm">Status: {o.status}</p>
             <p className="text-sm">Total: {o.total}</p>
           </li>
         ))}
-        {!orders?.length && (
-          <li className="text-sm text-gray-500">No orders</li>
-        )}
+        {!orders?.length && (<li className="text-sm text-gray-500">No orders</li>)}
       </ul>
     </div>
   );

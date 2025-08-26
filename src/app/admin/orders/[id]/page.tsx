@@ -1,26 +1,28 @@
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function OrderDetailPage({ params }: Props) {
+  const pr = await params;
   await requireAdmin();
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
   const { data: items } = await supabase
     .from("order_items")
     .select("*")
-    .eq("order_id", params.id);
+    .eq("order_id", pr.id);
 
   return (
     <div className="max-w-4xl mx-auto py-10 space-y-6">
-      <h1 className="text-2xl font-semibold">Order {params.id}</h1>
+      <h1 className="text-2xl font-semibold">Order {pr.id}</h1>
       <p>Status: {order?.status}</p>
       <p>Total: {order?.total}</p>
       <ul className="space-y-4">

@@ -1,14 +1,17 @@
+export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
 // Public read-only view for shared quotes using a temporary token.
 interface Props {
-  params: { id: string };
-  searchParams: { token?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ShareQuotePage({ params, searchParams }: Props) {
-  const token = searchParams.token;
+  const pr = await params;
+  const sp = await searchParams;
+  const token = sp.token;
   if (!token) {
     notFound();
   }
@@ -22,7 +25,7 @@ export default async function ShareQuotePage({ params, searchParams }: Props) {
 
   if (
     !share ||
-    share.quote_id !== params.id ||
+    share.quote_id !== pr.id ||
     new Date(share.expires_at) < new Date()
   ) {
     notFound();
@@ -33,7 +36,7 @@ export default async function ShareQuotePage({ params, searchParams }: Props) {
     .select(
       "id,status,total,quote_items(id,part_id,quantity,line_total)"
     )
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
 
   if (!quote) {

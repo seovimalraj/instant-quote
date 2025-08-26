@@ -1,24 +1,26 @@
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { calculatePricing } from "@/lib/pricing";
 import { normalizeProcessKind } from "@/lib/process";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function QuoteDetailPage({ params }: Props) {
+  const pr = await params;
   await requireAdmin();
   const supabase = await createClient();
   const { data: quote } = await supabase
     .from("quotes")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
   const { data: items } = await supabase
     .from("quote_items")
     .select("*")
-    .eq("quote_id", params.id);
+    .eq("quote_id", pr.id);
   const { data: rateCard } = await supabase
     .from("rate_cards")
     .select("*")
@@ -124,7 +126,7 @@ export default async function QuoteDetailPage({ params }: Props) {
     await fetch(`${origin}/api/quotes/reprice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quoteId: params.id, itemId, machineId }),
+      body: JSON.stringify({ quoteId: pr.id, itemId, machineId }),
     });
   }
 
@@ -141,24 +143,24 @@ export default async function QuoteDetailPage({ params }: Props) {
     await fetch(`${origin}/api/quotes/reprice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quoteId: params.id, itemId, overrides }),
+      body: JSON.stringify({ quoteId: pr.id, itemId, overrides }),
     });
   }
 
   async function acceptQuote() {
     "use server";
     const supabase = await createClient();
-    await supabase.from("quotes").update({ status: "accepted" }).eq("id", params.id);
+    await supabase.from("quotes").update({ status: "accepted" }).eq("id", pr.id);
     await fetch(`${origin}/api/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quoteId: params.id }),
+      body: JSON.stringify({ quoteId: pr.id }),
     });
   }
 
   return (
     <div className="max-w-4xl mx-auto py-10 space-y-6">
-      <h1 className="text-2xl font-semibold">Quote {params.id}</h1>
+      <h1 className="text-2xl font-semibold">Quote {pr.id}</h1>
       <div className="flex space-x-4">
         <form action={acceptQuote}>
           <button

@@ -1,18 +1,20 @@
+export const runtime = "nodejs";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PriceExplainerModal from "@/components/quotes/PriceExplainerModal";
 import { formatCurrency } from "@/components/quotes/BreakdownRow";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function QuotePage({ params }: Props) {
+  const pr = await params;
   const supabase = await createClient();
   const { data: quote } = await supabase
     .from("quotes")
     .select("id,total,currency,quote_items(pricing_breakdown,process_code,lead_time_days)")
-    .eq("id", params.id)
+    .eq("id", pr.id)
     .single();
 
   if (!quote) {

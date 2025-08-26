@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountPage() {
