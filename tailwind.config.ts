@@ -7,7 +7,18 @@ const config: Config = {
     "./src/lib/**/*.{ts,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: "var(--color-brand)",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
+        "muted-foreground": "var(--color-muted)",
+      },
+      container: {
+        center: true,
+        padding: "1rem",
+      },
+    },
   },
   plugins: [],
 };
