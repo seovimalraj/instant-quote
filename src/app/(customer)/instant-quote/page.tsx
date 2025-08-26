@@ -88,7 +88,7 @@ export default function InstantQuotePage({ searchParams }: Props) {
             tolerance={toleranceLabel}
           />
           <p className="text-sm">
-            Unit price: {formatCurrency(price.unit, breakdown.currency as any)}
+            Unit price: {formatCurrency(price.unit_price, breakdown.currency as any)}
           </p>
           <p className="text-lg font-medium">
             Total: {formatCurrency(price.total, breakdown.currency as any)}

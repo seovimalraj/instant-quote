@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { calculatePricing } from "@/lib/pricing";
+import { priceItem } from "@/lib/pricing";
+import { normalizeProcessKind } from "@/lib/process";
 import { z } from "zod";
 
 const requestSchema = z.object({
@@ -130,8 +131,9 @@ export async function POST(req: Request) {
       rateCardForItem[rateKey] = ratePerMin;
     }
 
-    const pricing = calculatePricing({
-      process: item.process_code as any,
+    const processKind = normalizeProcessKind(item.process_code as string);
+    const pricing = await priceItem({
+      process_kind: processKind,
       quantity: item.quantity,
       material: material!,
       finish: finish || undefined,
@@ -139,6 +141,9 @@ export async function POST(req: Request) {
       geometry,
       lead_time: leadTime,
       rate_card: rateCardForItem,
+      machines: [],
+      machineMaterials: [],
+      machineFinishes: [],
     });
 
     const setupFee = appliedOverrides.setup_fee ?? machine?.setup_fee ?? 0;

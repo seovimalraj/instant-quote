@@ -1,5 +1,27 @@
-import type { PricingInput } from "./validators/pricing";
 import { applyTeamDefaults } from "./dfm";
+import { normalizeProcessKind } from "./process";
+
+export interface PricingGeometry {
+  volume_mm3: number;
+  surface_area_mm2: number;
+  bbox: [number, number, number];
+  thickness_mm?: number;
+  holes_count?: number;
+  bends_count?: number;
+  max_overhang_deg?: number;
+  tap_drill_mismatch?: boolean;
+}
+
+export interface PricingInput {
+  process_kind: "cnc" | "injection" | "casting";
+  quantity: number;
+  lead_time: "standard" | "expedite";
+  geometry: PricingGeometry;
+  material?: any;
+  finish?: any;
+  tolerance?: any;
+  rate_card: any;
+}
 
 export interface LineItem {
   description: string;
@@ -55,30 +77,28 @@ export interface MachineFinishLink {
 }
 
 export interface PricingResult {
-  /** Quantity for this price result */
   q: number;
-  /** Price per unit */
   unit_price: number;
-  /** Subtotal before tax/shipping */
   subtotal: number;
   tax: number;
   shipping: number;
-  /** Total price including tax/shipping */
   total: number;
-  /** Detailed line items */
-  lineItems: LineItem[];
-  /** Map of line item descriptions to amounts */
-  breakdown: Record<string, number>;
+  currency?: string;
   machine_id?: string;
-  warnings: string[];
-  breakdownJson: string;
+  promise_date?: string;
+  lead_time_days?: number;
+  breakdownJson: any;
+  warnings?: any[];
+  unit?: number;
+  lineItems: LineItem[];
+  breakdown: Record<string, number>;
 }
 
 function defaultMachineFromRateCard(input: PricingInput): Machine {
   return {
     id: "rate_card",
     name: "rate_card",
-    process_code: input.process,
+    process_code: input.process_kind,
     axis_count: 3,
     rate_per_min: input.rate_card.three_axis_rate_per_min ?? 0,
     setup_fee: 0,
@@ -272,18 +292,24 @@ async function priceWithMachine(
     breakdown.shipping = shipping;
   }
 
+  const unit_price = total / q;
+
   return {
     q,
-    unit_price: total / q,
+    unit_price,
     subtotal,
     tax,
     shipping,
     total,
+    currency: rate_card.currency,
+    machine_id: machine.id,
+    promise_date: undefined,
+    lead_time_days: lead_time === "expedite" ? 3 : 7,
+    breakdownJson: JSON.stringify(breakdown),
+    warnings: [],
+    unit: unit_price,
     lineItems,
     breakdown,
-    machine_id: machine.id,
-    warnings: [],
-    breakdownJson: JSON.stringify(breakdown),
   };
 }
 
@@ -299,6 +325,9 @@ export async function priceItem(
     ? applyTeamDefaults<PricingInput>(input.user, input)
     : input;
 
+  if (!merged.material) throw new Error("material required");
+  if (!merged.rate_card) throw new Error("rate_card required");
+
   const materialId = (merged.material as any).id;
   const finishId = (merged.finish as any)?.id;
 
@@ -306,19 +335,19 @@ export async function priceItem(
 
   let fallbackUsed = false;
   for (const m of input.machines) {
-    if (m.process_code !== merged.process) continue;
+    if (normalizeProcessKind(m.process_code) !== merged.process_kind) continue;
     if (m.is_active === false) continue;
     if (m.envelope_mm) {
       const [bx, by, bz] = merged.geometry.bbox;
       const [ex, ey, ez] = m.envelope_mm;
       if (bx > ex || by > ey || bz > ez) continue;
     }
-    if (m.process_code.startsWith("injection")) {
+    if (normalizeProcessKind(m.process_code) === "injection") {
       const runner = m.runner_pct ?? 0;
       const shot = (merged.geometry.volume_mm3 / 1000) * (1 + runner);
       if (m.shot_capacity_cm3 && shot > m.shot_capacity_cm3) continue;
     }
-    if (m.process_code === "casting") {
+    if (normalizeProcessKind(m.process_code) === "casting") {
       const density = merged.material.density_kg_m3 ?? 0;
       const net = (merged.geometry.volume_mm3 / 1e9) * density;
       const gross = (net / ((m.yield_pct ?? 100) / 100)) * (1 + (m.scrap_pct ?? 0) / 100);
@@ -400,6 +429,7 @@ export async function priceTiers(
       }
     }
     res.unit_price = unit;
+    res.unit = unit;
     prevUnit = unit;
     results[q] = res;
   }

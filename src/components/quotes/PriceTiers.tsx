@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { calculatePricing, PricingResult } from "@/lib/pricing";
 import { Geometry } from "@/lib/validators/pricing";
+import { normalizeProcessKind } from "@/lib/process";
 // Buttons to display price for preset quantity tiers.
 const TIERS = [1, 2, 5, 10, 25, 50, 100];
 
@@ -30,25 +31,36 @@ export default function PriceTiers({
   const [prices, setPrices] = useState<Record<number, PricingResult>>({});
 
   useEffect(() => {
-    const geom: Geometry = {
-      volume_mm3: part.volume_mm3 ?? 0,
-      surface_area_mm2: part.surface_area_mm2 ?? 0,
-      bbox: (part.bbox as [number, number, number]) ?? [0, 0, 0],
-    };
-    const rc = { ...rateCard };
-    TIERS.forEach((qty) => {
-      const pricing = calculatePricing({
-        process: part.process_code,
-        quantity: qty,
-        material,
-        finish,
-        tolerance,
-        geometry: geom,
-        lead_time: leadTime,
-        rate_card: rc,
-      });
-      setPrices((p) => ({ ...p, [qty]: pricing }));
-    });
+    async function run() {
+      const geom: Geometry = {
+        volume_mm3: part.volume_mm3 ?? 0,
+        surface_area_mm2: part.surface_area_mm2 ?? 0,
+        bbox: (part.bbox as [number, number, number]) ?? [0, 0, 0],
+      };
+      const rc = { ...rateCard };
+      const processKind = normalizeProcessKind(part.process_code);
+      const entries = await Promise.all(
+        TIERS.map(async (qty) => {
+          const pricing = await calculatePricing({
+            process_kind: processKind,
+            quantity: qty,
+            material,
+            finish,
+            tolerance,
+            geometry: geom,
+            lead_time: leadTime,
+            rate_card: rc,
+          });
+          return [qty, pricing] as const;
+        })
+      );
+      const map: Record<number, PricingResult> = {};
+      for (const [q, pricing] of entries) {
+        map[q] = pricing;
+      }
+      setPrices(map);
+    }
+    run();
   }, [part, material, finish, tolerance, rateCard, leadTime]);
 
   return (
