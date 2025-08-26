@@ -1,24 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { calculatePricing, PricingResult } from "@/lib/pricing";
 import { Geometry } from "@/lib/validators/pricing";
 import { createClient } from "@/lib/supabase/client";
-import { BreakdownJson } from "./PriceExplainerModal";
+import { evaluateDfM } from "@/lib/dfm";
+import { BreakdownJson as BaseBreakdownJson } from "./PriceExplainerModal";
 import { BreakdownLine } from "./BreakdownRow";
+
+interface BreakdownJson extends BaseBreakdownJson {
+  meta?: Record<string, any>;
+}
 
 interface Props {
   partId: string;
+  defaultMaterialId?: string;
+  defaultToleranceId?: string;
+  purpose?: string;
   onPricingChange?: (info: {
     price: PricingResult;
     breakdown: BreakdownJson;
     processKind: string;
     leadTime: string;
+    toleranceLabel?: string;
   }) => void;
 }
 
-export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
+export default function InstantQuoteForm({
+  partId,
+  defaultMaterialId,
+  defaultToleranceId,
+  purpose,
+  onPricingChange,
+}: Props) {
   const [part, setPart] = useState<any | null>(null);
   const [materials, setMaterials] = useState<any[]>([]);
   const [finishes, setFinishes] = useState<any[]>([]);
@@ -26,6 +41,7 @@ export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
   const [machines, setMachines] = useState<any[]>([]);
   const [rateCard, setRateCard] = useState<any | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [dfmDigest, setDfmDigest] = useState<string | null>(null);
 
   const { register, watch, setValue } = useForm<any>({
     defaultValues: {
@@ -97,21 +113,53 @@ export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
             .single(),
         ]);
 
-  setPart(partData);
-  setMaterials(materialsRes.data ?? []);
-  setFinishes(finishesRes.data ?? []);
-  setTolerances(tolerancesRes.data ?? []);
-  setMachines(machinesRes.data ?? []);
-  setRateCard(rateCardRes.data ?? null);
+      setPart(partData);
+      setMaterials(materialsRes.data ?? []);
+      setFinishes(finishesRes.data ?? []);
+      setTolerances(tolerancesRes.data ?? []);
+      setMachines(machinesRes.data ?? []);
+      setRateCard(rateCardRes.data ?? null);
 
-  if (materialsRes.data && materialsRes.data[0]) {
-    setValue("material_id", materialsRes.data[0].id);
-    setValue("resin_id", materialsRes.data[0].id);
-    setValue("alloy_id", materialsRes.data[0].id);
-  }
+      const materialDefault =
+        (defaultMaterialId && materialsRes.data?.find((m) => m.id === defaultMaterialId)) ||
+        materialsRes.data?.[0];
+      if (materialDefault) {
+        setValue("material_id", materialDefault.id);
+        setValue("resin_id", materialDefault.id);
+        setValue("alloy_id", materialDefault.id);
+      }
+
+      if (defaultToleranceId) {
+        const tol = tolerancesRes.data?.find((t) => t.id === defaultToleranceId);
+        if (tol) setValue("tolerance_id", tol.id);
+      }
+
+      const geomForDfM: Geometry = {
+        volume_mm3: partData.volume_mm3 ?? 0,
+        surface_area_mm2: partData.surface_area_mm2 ?? 0,
+        bbox: (partData.bbox as [number, number, number]) ?? [0, 0, 0],
+        thickness_mm: partData.thickness_mm ?? undefined,
+        holes_count: partData.holes_count ?? undefined,
+        bends_count: partData.bends_count ?? undefined,
+        max_overhang_deg: partData.max_overhang_deg ?? undefined,
+        hole_depth_diameter_ratio: partData.hole_depth_diameter_ratio ?? undefined,
+        bend_radius_mm: partData.bend_radius_mm ?? undefined,
+        min_feature_mm: partData.min_feature_mm ?? undefined,
+        tap_drill_mismatch: partData.tap_drill_mismatch ?? undefined,
+      };
+      const dfmHints = evaluateDfM(partData.process_code, geomForDfM);
+      const msg = JSON.stringify(dfmHints);
+      const digestBuf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(msg)
+      );
+      const digest = Array.from(new Uint8Array(digestBuf))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      setDfmDigest(digest);
     }
     load();
-  }, [partId, setValue]);
+  }, [partId, setValue, defaultMaterialId, defaultToleranceId]);
 
   const materialId = watch("material_id");
   const finishId = watch("finish_id");
@@ -129,20 +177,27 @@ export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
   const machiningAllowance = watch("machining_allowance_pct");
   const heatTreat = watch("heat_treat");
 
-  function buildBreakdown(pricing: PricingResult, currency: string): BreakdownJson {
-    const lines: BreakdownLine[] = [];
-    for (const [key, value] of Object.entries(pricing.breakdown)) {
-      lines.push({ label: key.replace(/_/g, " "), value, kind: "overhead" });
-    }
-    return {
-      lines,
-      subtotal: pricing.subtotal,
-      tax: pricing.tax,
-      shipping: pricing.shipping,
-      total: pricing.total,
-      currency: currency as any,
-    };
-  }
+  const buildBreakdown = useCallback(
+    (pricing: PricingResult, currency: string, digest?: string): BreakdownJson => {
+      const lines: BreakdownLine[] = [];
+      for (const [key, value] of Object.entries(pricing.breakdown)) {
+        lines.push({ label: key.replace(/_/g, " "), value, kind: "overhead" });
+      }
+      const bd: BreakdownJson = {
+        lines,
+        subtotal: pricing.subtotal,
+        tax: pricing.tax,
+        shipping: pricing.shipping,
+        total: pricing.total,
+        currency: currency as any,
+      };
+      if (digest || purpose) {
+        bd.meta = { ...(digest ? { dfmdigest: digest } : {}), ...(purpose ? { purpose } : {}) };
+      }
+      return bd;
+    },
+    [purpose]
+  );
 
   useEffect(() => {
     if (!part || !rateCard) return;
@@ -214,13 +269,15 @@ export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
     });
 
     const currency = rateCard?.currency || "USD";
-    const breakdown = buildBreakdown(pricing, currency);
+    const toleranceLabel = tolerance?.name;
+    const breakdown = buildBreakdown(pricing, currency, dfmDigest || undefined);
 
     onPricingChange?.({
       price: pricing,
       breakdown,
       processKind: part.process_code,
       leadTime,
+      toleranceLabel,
     });
 
     async function checkFeasibility() {
@@ -279,6 +336,8 @@ export default function InstantQuoteForm({ partId, onPricingChange }: Props) {
     heatTreat,
     onPricingChange,
     partId,
+    dfmDigest,
+    buildBreakdown,
   ]);
 
   if (!part) {
