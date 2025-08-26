@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 interface Tier {
@@ -30,7 +30,19 @@ export default function MultiPartMenu({
   onAddPart,
   onRemovePart,
 }: MultiPartMenuProps) {
-  const selected = parts.find((p) => p.id === currentPartId);
+  const [selectedId, setSelectedId] = useState<string | undefined>(currentPartId);
+
+  useEffect(() => {
+    setSelectedId(currentPartId);
+  }, [currentPartId]);
+
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    onSelectPart?.(id);
+  };
+
+  const selected = parts.find((p) => p.id === selectedId);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -49,9 +61,9 @@ export default function MultiPartMenu({
           <li
             key={part.id}
             className={`flex items-center justify-between p-2 rounded cursor-pointer ${
-              currentPartId === part.id ? "bg-gray-200" : "hover:bg-gray-100"
+              selectedId === part.id ? "bg-gray-200" : "hover:bg-gray-100"
             }`}
-            onClick={() => onSelectPart?.(part.id)}
+            onClick={() => handleSelect(part.id)}
           >
             <span>{part.name}</span>
             <span className="flex items-center space-x-2">
