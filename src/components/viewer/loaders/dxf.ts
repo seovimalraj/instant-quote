@@ -1,16 +1,34 @@
 import * as THREE from 'three';
 import DxfParser from 'dxf-parser';
 
+type DxfEntity =
+  | { type: 'LINE'; start?: { x: number; y: number }; end?: { x: number; y: number } }
+  | { type: 'LWPOLYLINE'; vertices?: { x: number; y: number }[] }
+  | { type: 'POLYLINE'; vertices?: { x: number; y: number }[] }
+  | { type: 'CIRCLE'; center?: { x: number; y: number }; radius?: number }
+  | {
+      type: 'ARC';
+      center?: { x: number; y: number };
+      radius?: number;
+      startAngle?: number;
+      endAngle?: number;
+    };
+
 export async function loadDXF(
   url: string
 ): Promise<{ object: THREE.LineSegments; geometry: THREE.BufferGeometry; unit: string }> {
   const res = await fetch(url);
   const text = await res.text();
   const parser = new DxfParser();
-  const dxf = parser.parseSync(text);
+  const dxf: any = parser.parseSync(text);
+  if (!dxf) {
+    throw new Error('Failed to parse DXF');
+  }
 
   const positions: number[] = [];
-  const entities: any[] = Array.isArray(dxf.entities) ? dxf.entities : [];
+  const entities: DxfEntity[] = Array.isArray(dxf.entities)
+    ? (dxf.entities as DxfEntity[])
+    : [];
 
   for (const e of entities) {
     if (e.type === 'LINE') {
@@ -27,6 +45,9 @@ export async function loadDXF(
           positions.push(v1.x, v1.y, 0, v2.x, v2.y, 0);
         }
       }
+    } else {
+      // Unsupported entity type
+      continue;
     }
   }
 
