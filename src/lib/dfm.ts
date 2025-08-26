@@ -6,6 +6,14 @@ export type DfmHint = {
   metric?: number | string;
 };
 
+/** Merge a user's team defaults into a target object. */
+export function applyTeamDefaults<T>(
+  user: { team_defaults?: Record<string, any> },
+  selections: T
+): T {
+  return { ...(user.team_defaults ?? {}), ...(selections as any) } as T;
+}
+
 /**
  * Evaluate design-for-manufacturability hints for a given process.
  *
