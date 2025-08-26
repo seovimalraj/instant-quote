@@ -4,8 +4,8 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 const schema = z.object({
-  finish_id: z.string().uuid(),
-  finish_rate_multiplier: z.number().optional(),
+  resin_id: z.string().uuid(),
+  resin_rate_multiplier: z.number().optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -21,13 +21,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   const PAGE_SIZE = 10;
   const supabase = createClient();
   const { data, count, error } = await supabase
-    .from("machine_finishes")
-    .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)", {
-      count: "exact",
-    })
+    .from("machine_resins")
+    .select(
+      "id, resin_id, resin_rate_multiplier, is_active, resins(name)",
+      { count: "exact" }
+    )
     .eq("machine_id", params.id)
-    .order("finishes.name")
-    .ilike("finishes.name", `%${search}%`)
+    .order("resins.name")
+    .ilike("resins.name", `%${search}%`)
     .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,9 +47,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("machine_finishes")
+    .from("machine_resins")
     .insert({ ...body, machine_id: params.id })
-    .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)")
+    .select(
+      "id, resin_id, resin_rate_multiplier, is_active, resins(name)"
+    )
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -72,11 +75,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("machine_finishes")
+    .from("machine_resins")
     .update(body)
     .eq("id", id)
     .eq("machine_id", params.id)
-    .select("id, finish_id, finish_rate_multiplier, is_active, finishes(name)")
+    .select(
+      "id, resin_id, resin_rate_multiplier, is_active, resins(name)"
+    )
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -93,7 +98,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
   const supabase = createClient();
   const { error } = await supabase
-    .from("machine_finishes")
+    .from("machine_resins")
     .delete()
     .eq("id", id)
     .eq("machine_id", params.id);
@@ -102,4 +107,3 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
   return NextResponse.json({ ok: true });
 }
-

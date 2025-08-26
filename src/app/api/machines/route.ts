@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -19,9 +19,9 @@ const machineSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   await requireAdmin();
-  const { searchParams } = new URL(req.url);
+  const searchParams = req.nextUrl.searchParams;
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page") || "0", 10);
   const PAGE_SIZE = 10;
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ data, count });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   await requireAdmin();
   let body;
   try {
