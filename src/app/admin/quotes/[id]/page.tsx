@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { calculatePricing } from "@/lib/pricing";
+import { normalizeProcessKind } from "@/lib/process";
 
 interface Props {
   params: { id: string };
@@ -95,8 +96,8 @@ export default async function QuoteDetailPage({ params }: Props) {
       if (rateKey) {
         rateCardForItem[rateKey] = m.rate_per_min;
       }
-      const pricing = calculatePricing({
-        process: item.process_code as any,
+      const pricing = await calculatePricing({
+        process_kind: normalizeProcessKind(item.process_code as string),
         quantity: item.quantity,
         material: material!,
         finish: finish || undefined,

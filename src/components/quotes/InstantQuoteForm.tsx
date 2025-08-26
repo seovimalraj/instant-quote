@@ -6,6 +6,7 @@ import { calculatePricing, PricingResult } from "@/lib/pricing";
 import { Geometry } from "@/lib/validators/pricing";
 import { createClient } from "@/lib/supabase/client";
 import { evaluateDfM } from "@/lib/dfm";
+import { normalizeProcessKind } from "@/lib/process";
 import { BreakdownJson as BaseBreakdownJson } from "./PriceExplainerModal";
 import { BreakdownLine } from "./BreakdownRow";
 
@@ -201,86 +202,86 @@ export default function InstantQuoteForm({
 
   useEffect(() => {
     if (!part || !rateCard) return;
-    const processKind = part.process_code || "";
+    async function run() {
+      const processKind = normalizeProcessKind(part.process_code);
 
-    const material =
-      materials.find((m) => m.id === materialId || m.id === resinId || m.id === alloyId) ||
-      materials[0];
-    if (!material) return;
+      const material =
+        materials.find((m) => m.id === materialId || m.id === resinId || m.id === alloyId) ||
+        materials[0];
+      if (!material) return;
 
-    const finish = finishes.find((f) => f.id === finishId);
-    const tolerance = tolerances.find((t) => t.id === toleranceId);
+      const finish = finishes.find((f) => f.id === finishId);
+      const tolerance = tolerances.find((t) => t.id === toleranceId);
 
-    const geom: Geometry = {
-      volume_mm3: part.volume_mm3 ?? 0,
-      surface_area_mm2: part.surface_area_mm2 ?? 0,
-      bbox: (part.bbox as [number, number, number]) ?? [0, 0, 0],
-    };
+      const geom: Geometry = {
+        volume_mm3: part.volume_mm3 ?? 0,
+        surface_area_mm2: part.surface_area_mm2 ?? 0,
+        bbox: (part.bbox as [number, number, number]) ?? [0, 0, 0],
+      };
 
-    const bbox = geom.bbox;
-    const machine = machines
-      .filter((m) => {
-        if (!m.envelope_mm) return true;
-        const { x, y, z } = m.envelope_mm;
-        return (
-          bbox[0] <= (x ?? Infinity) &&
-          bbox[1] <= (y ?? Infinity) &&
-          bbox[2] <= (z ?? Infinity)
-        );
-      })
-      .sort((a, b) => (a.rate_per_min ?? 0) - (b.rate_per_min ?? 0))[0];
+      const bbox = geom.bbox;
+      const machine = machines
+        .filter((m) => {
+          if (!m.envelope_mm) return true;
+          const { x, y, z } = m.envelope_mm;
+          return (
+            bbox[0] <= (x ?? Infinity) &&
+            bbox[1] <= (y ?? Infinity) &&
+            bbox[2] <= (z ?? Infinity)
+          );
+        })
+        .sort((a, b) => (a.rate_per_min ?? 0) - (b.rate_per_min ?? 0))[0];
 
-    const rc = { ...(rateCard || {}) } as any;
-    if (machine) {
-      switch (part.process_code) {
-        case "cnc_milling":
-          rc.three_axis_rate_per_min = machine.rate_per_min;
-          break;
-        case "cnc_turning":
-          rc.turning_rate_per_min = machine.rate_per_min;
-          break;
-        case "sheet_metal":
-          rc.laser_rate_per_min = machine.rate_per_min;
-          break;
-        case "3dp_fdm":
-          rc.fdm_rate_per_cm3 = machine.rate_per_min;
-          break;
-        case "3dp_sla":
-          rc.sla_rate_per_cm3 = machine.rate_per_min;
-          break;
-        case "3dp_sls":
-          rc.sls_rate_per_cm3 = machine.rate_per_min;
-          break;
+      const rc = { ...(rateCard || {}) } as any;
+      if (machine) {
+        switch (part.process_code) {
+          case "cnc_milling":
+            rc.three_axis_rate_per_min = machine.rate_per_min;
+            break;
+          case "cnc_turning":
+            rc.turning_rate_per_min = machine.rate_per_min;
+            break;
+          case "sheet_metal":
+            rc.laser_rate_per_min = machine.rate_per_min;
+            break;
+          case "3dp_fdm":
+            rc.fdm_rate_per_cm3 = machine.rate_per_min;
+            break;
+          case "3dp_sla":
+            rc.sla_rate_per_cm3 = machine.rate_per_min;
+            break;
+          case "3dp_sls":
+            rc.sls_rate_per_cm3 = machine.rate_per_min;
+            break;
+        }
       }
-    }
 
-    const qty =
-      processKind.startsWith("injection") ? annualVolume || 1 : quantity || 1;
+      const qty =
+        processKind === "injection" ? annualVolume || 1 : quantity || 1;
 
-    const pricing = calculatePricing({
-      process: part.process_code,
-      quantity: qty,
-      material,
-      finish: finish || undefined,
-      tolerance: tolerance || undefined,
-      geometry: geom,
-      lead_time: leadTime,
-      rate_card: rc,
-    });
+      const pricing = await calculatePricing({
+        process_kind: processKind,
+        quantity: qty,
+        material,
+        finish: finish || undefined,
+        tolerance: tolerance || undefined,
+        geometry: geom,
+        lead_time: leadTime,
+        rate_card: rc,
+      });
 
-    const currency = rateCard?.currency || "USD";
-    const toleranceLabel = tolerance?.name;
-    const breakdown = buildBreakdown(pricing, currency, dfmDigest || undefined);
+      const currency = rateCard?.currency || "USD";
+      const toleranceLabel = tolerance?.name;
+      const breakdown = buildBreakdown(pricing, currency, dfmDigest || undefined);
 
-    onPricingChange?.({
-      price: pricing,
-      breakdown,
-      processKind: part.process_code,
-      leadTime,
-      toleranceLabel,
-    });
+      onPricingChange?.({
+        price: pricing,
+        breakdown,
+        processKind,
+        leadTime,
+        toleranceLabel,
+      });
 
-    async function checkFeasibility() {
       try {
         const res = await fetch("/api/quotes/feasibility", {
           method: "POST",
@@ -313,7 +314,7 @@ export default function InstantQuoteForm({
         setWarnings([]);
       }
     }
-    checkFeasibility();
+    run();
   }, [
     part,
     rateCard,
@@ -344,13 +345,7 @@ export default function InstantQuoteForm({
     return <p className="text-sm text-gray-500">Loading...</p>;
   }
 
-  const processKind = part.process_code.startsWith("cnc")
-    ? "cnc"
-    : part.process_code.includes("injection")
-    ? "injection"
-    : part.process_code.includes("casting")
-    ? "casting"
-    : "other";
+  const processKind = normalizeProcessKind(part.process_code);
 
   return (
     <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>

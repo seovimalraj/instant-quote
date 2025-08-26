@@ -2,18 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { priceItem } from "@/lib/pricing";
+import { normalizeProcessKind } from "@/lib/process";
 import { geometrySchema } from "@/lib/validators/pricing";
 
 const requestSchema = z.object({
-  process_kind: z.enum([
-    "cnc_milling",
-    "cnc_turning",
-    "sheet_metal",
-    "3dp_fdm",
-    "3dp_sla",
-    "3dp_sls",
-    "injection_proto",
-  ]),
+  process: z.string(),
   material_id: z.string().uuid(),
   finish_id: z.string().uuid().optional(),
   tolerance_id: z.string().uuid().optional(),
@@ -54,6 +47,8 @@ export async function POST(req: NextRequest) {
     const msg = err?.errors?.[0]?.message ?? "Invalid request";
     return NextResponse.json({ error: msg }, { status: 400 });
   }
+
+  const process_kind = normalizeProcessKind(body.process);
 
   const supabase = createClient();
 
@@ -161,7 +156,7 @@ export async function POST(req: NextRequest) {
     }));
 
   const pricing = await priceItem({
-    process: body.process_kind,
+    process_kind,
     quantity: body.quantity,
     material,
     finish: finish || undefined,

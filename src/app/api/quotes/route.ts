@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { calculatePricing } from "@/lib/pricing";
+import { priceItem } from "@/lib/pricing";
 import { evaluateDfM } from "@/lib/dfm";
+import { normalizeProcessKind } from "@/lib/process";
 
 const requestSchema = z.object({
   partId: z.string().uuid(),
-  process_code: z.enum([
-    "cnc_milling",
-    "cnc_turning",
-    "sheet_metal",
-    "3dp_fdm",
-    "3dp_sla",
-    "3dp_sls",
-    "injection_proto",
-  ]),
+  process: z.string(),
   material_id: z.string().uuid(),
   finish_id: z.string().uuid().optional(),
   tolerance_id: z.string().uuid().optional(),
@@ -104,8 +97,9 @@ export async function POST(req: Request) {
       max_overhang_deg: part.max_overhang_deg ?? undefined,
     };
 
-    const pricing = calculatePricing({
-      process: body.process_code,
+    const processKind = normalizeProcessKind(body.process);
+    const pricing = await priceItem({
+      process_kind: processKind,
       quantity: body.quantity,
       material: material!,
       finish: finish || undefined,
@@ -113,9 +107,12 @@ export async function POST(req: Request) {
       geometry,
       lead_time: body.lead_time,
       rate_card: rateCard || {},
+      machines: [],
+      machineMaterials: [],
+      machineFinishes: [],
     });
 
-    const dfmHints = evaluateDfM(body.process_code, geometry);
+    const dfmHints = evaluateDfM(body.process, geometry);
 
     const { data: quote } = await supabase
       .from("quotes")
@@ -138,7 +135,7 @@ export async function POST(req: Request) {
       .insert({
         quote_id: quote.id,
         part_id: part.id,
-        process_code: body.process_code,
+        process_code: body.process,
         material_id: body.material_id,
         finish_id: body.finish_id,
         tolerance_id: body.tolerance_id,
