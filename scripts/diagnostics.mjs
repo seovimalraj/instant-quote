@@ -1,132 +1,85 @@
 /* eslint-env node */
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { globSync } from 'glob';
 
-const root = path.dirname(fileURLToPath(import.meta.url) + "/../..");
-const F = (p) => path.join(root, p);
+const problems = [];
 
-const findings = {
-  environment: [],
-  apiRoutes: [],
-  pages: [],
-  config: [],
-  summary: { errors: 0, warnings: 0 },
-};
-
-function add(kind, level, file, message, detail) {
-  findings[kind].push({ level, file, message, detail });
-  if (level === "error") findings.summary.errors++;
-  if (level === "warn") findings.summary.warnings++;
-}
-
-function readJSON(p) {
-  try { return JSON.parse(fs.readFileSync(F(p), "utf8")); } catch { return null; }
-}
-
-function walk(dir, exts = [".ts", ".tsx"]) {
-  const out = [];
-  const base = F(dir);
-  if (!fs.existsSync(base)) return out;
-  (function rec(d) {
-    for (const name of fs.readdirSync(d)) {
-      const p = path.join(d, name);
-      const st = fs.statSync(p);
-      if (st.isDirectory()) rec(p);
-      else if (exts.includes(path.extname(p))) out.push(p);
-    }
-  })(base);
-  return out;
-}
-
-/* ---------------------- 1) Environment / engines check -------------------- */
-const pkg = readJSON("package.json");
-if (pkg?.engines?.node) {
-  const required = pkg.engines.node;
-  const current = process.version; // e.g. v22.18.0
-  if (!current) {
-    add("environment", "warn", "process.version", "Cannot read current Node version");
-  } else {
-    // quick nudge only (semver is overkill here)
-    const wantMajor = (required.match(/\d+/) || [null])[0];
-    const haveMajor = current.split(".")[0].replace("v", "");
-    if (wantMajor && haveMajor && wantMajor !== haveMajor) {
-      add("environment", "error", "package.json#engines", `Node mismatch: requires "${required}" but running "${current}"`);
+// 1) Node version vs engines
+try {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const engines = pkg.engines?.node;
+  if (engines) {
+    const node = process.versions.node;
+    const ok = /^>=\d+/.test(engines) ? true : false;
+    if (!ok) problems.push({ level: 'warn', msg: `package.json engines.node is unusual: "${engines}"` });
+    if (!new RegExp('^22\\.?').test(node)) {
+      problems.push({ level: 'error', msg: `Node ${node} running; project expects ${engines}` });
     }
   }
-} else {
-  add("environment", "warn", "package.json#engines", "No Node engine set; set one to match Vercel");
+} catch (e) {
+  problems.push({ level: 'error', msg: `Cannot read package.json: ${e.message}` });
 }
 
-/* ---------------------- 2) Config sanity (Vercel & npm) ------------------- */
-const vercel = readJSON("vercel.json");
-if (vercel?.functions) {
-  // Next App Router auto-discovers API routes; function globs often cause “unmatched pattern” on Vercel
-  add(
-    "config",
-    "warn",
-    "vercel.json",
-    "Found `functions` key. Next.js App Router usually doesn’t need this; can trigger unmatched pattern errors.",
-    "Consider removing `functions` or ensure patterns actually match /app/api/**/route.ts"
-  );
-}
-if (fs.existsSync(F(".npmrc"))) {
-  const npmrc = fs.readFileSync(F(".npmrc"), "utf8");
-  if (/^http-proxy\s*=|^https-proxy\s*=/m.test(npmrc)) {
-    add("config", "warn", ".npmrc", "Detected http-proxy/https-proxy settings; npm warns these may stop working in future.");
-  }
-}
-
-/* ---------------------- 3) API route health (Next 15 rules) --------------- */
-const apiFiles = walk("src/app/api");
-for (const file of apiFiles.filter(f => /route\.tsx?$/.test(f))) {
-  const s = fs.readFileSync(file, "utf8");
-  // a) runtime guard
+// 2) API routes must pin Node runtime (avoid Edge + process.* warnings)
+const apiRoutes = globSync('src/app/api/**/route.{ts,tsx}', { nodir: true });
+for (const f of apiRoutes) {
+  const s = fs.readFileSync(f, 'utf8');
   if (!/export\s+const\s+runtime\s*=\s*['"]nodejs['"]/.test(s)) {
-    add("apiRoutes", "warn", file, "Missing `export const runtime = 'nodejs'` (prevents Edge+Supabase warnings).");
-  }
-  // b) second arg must be inline typed context with params (no custom alias)
-  // e.g. export async function GET(req: Request, { params }: { params: { id: string }})
-  const badCtx = /export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s*\([\s\S]*?\{\s*params\s*:\s*[A-Za-z_]\w*/m;
-  if (badCtx.test(s)) {
-    add("apiRoutes", "error", file, "Invalid route context type", "Second arg must be inline typed: { params: { ... } } (no custom alias)");
+    problems.push({ level: 'warn', msg: `Missing "export const runtime = 'nodejs'" in ${f}` });
   }
 }
 
-/* ---------------------- 4) Page props (Next 15 signatures) ---------------- */
-const pageFiles = walk("src/app").filter(f => /page\.tsx?$/.test(f));
-for (const file of pageFiles) {
-  const s = fs.readFileSync(file, "utf8");
-  // a) direct PageProps import is gone
-  if (/PageProps/.test(s)) {
-    add("pages", "error", file, "Uses removed Next type `PageProps`", "Use inline `{ params?: any; searchParams?: any }` typing");
-  }
-  // b) Props with synchronous searchParams often breaks (must tolerate Promise in Next 15)
-  if (/interface\s+Props[\s\S]*searchParams:\s*\{/.test(s) && /export\s+default\s+async\s+function\s+\w+\s*\(\s*\{\s*searchParams\s*\}\s*:\s*Props\s*\)/.test(s)) {
-    add("pages", "warn", file, "Props defines sync searchParams; Next 15 may pass Promises", "Use `{ params?: any; searchParams?: any }` or await-resolve pattern");
+// 3) Next 15 route context signature sanity
+for (const f of apiRoutes) {
+  const s = fs.readFileSync(f, 'utf8');
+  if (/context:\s*{\s*params:\s*Record<string,\s*string>\s*}/.test(s)) {
+    problems.push({ level: 'error', msg: `Route uses legacy context type in ${f}. Use { params }: { params: Promise<Record<string,string>> }` });
   }
 }
 
-/* ---------------------- 5) Supabase in Edge (warning detector) ------------ */
-for (const file of apiFiles) {
-  const s = fs.readFileSync(file, "utf8");
-  if (/@supabase\/ssr|@supabase\/supabase-js/.test(s) && !/export\s+const\s+runtime\s*=\s*['"]nodejs['"]/.test(s)) {
-    add("apiRoutes", "warn", file, "Supabase used without `runtime='nodejs'`", "This produces Edge runtime warnings during `next build`");
+// 4) Pages: avoid importing PageProps from 'next'
+const pages = globSync('src/app/**/page.tsx', { nodir: true });
+for (const f of pages) {
+  const s = fs.readFileSync(f, 'utf8');
+  if (/from\s+['"]next['"]\s*;?\s*\n.*PageProps/.test(s)) {
+    problems.push({ level: 'error', msg: `Do not import PageProps from 'next'. Use { params?: any; searchParams?: any } and await if Promises. File: ${f}` });
   }
 }
 
-/* ---------------------- 6) Output report --------------------------------- */
-const outPath = F("diagnostics.json");
-fs.writeFileSync(outPath, JSON.stringify(findings, null, 2));
-const badge = (n, label, color) => `\x1b[1m\x1b[${color}m${n} ${label}\x1b[0m`;
-console.log(
-  `\nDiagnostics complete → diagnostics.json  ${badge(findings.summary.errors, "errors", 31)}  ${badge(findings.summary.warnings, "warnings", 33)}\n`
-);
-for (const section of ["environment", "config", "apiRoutes", "pages"]) {
-  if (!findings[section].length) continue;
-  console.log(`• ${section}`);
-  for (const item of findings[section]) {
-    const color = item.level === "error" ? 31 : 33;
-    console.log(`  - \x1b[${color}m[${item.level}]\x1b[0m ${item.file}: ${item.message}`);
+// 5) Supabase Edge warnings: browser client or realtime used in API
+for (const f of apiRoutes) {
+  const s = fs.readFileSync(f, 'utf8');
+  if (/from\s+['"]@supabase\/ssr['"]/.test(s) || /@supabase\/realtime-js/.test(s)) {
+    problems.push({ level: 'error', msg: `API route imports browser/realtime client in ${f}. Use "@/lib/supabase/server".` });
   }
 }
+
+// 6) npm proxy configs that trigger warnings
+try {
+  const out = execSync('npm config list -l', { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  if (/http-proxy\s*=/.test(out) || /https-proxy\s*=/.test(out) || /proxy\s*=/.test(out)) {
+    problems.push({ level: 'warn', msg: 'npm proxy settings detected (http-proxy/https-proxy). Consider removing to avoid warnings.' });
+  }
+} catch {}
+
+// 7) Dependabot invalid config
+if (fs.existsSync('.github/dependabot.yml')) {
+  const s = fs.readFileSync('.github/dependabot.yml', 'utf8');
+  if (/package-ecosystem:\s*["']?\s*["']?$/m.test(s) || /package-ecosystem:\s*$/.test(s)) {
+    problems.push({ level: 'error', msg: '.github/dependabot.yml has an empty package-ecosystem. Fix to "npm" etc.' });
+  }
+}
+
+// Print report
+const byLevel = { error: [], warn: [] };
+for (const p of problems) byLevel[p.level].push(p.msg);
+
+const header = (t, n) => console.log(`\n=== ${t} (${n}) ===`);
+header('Errors', byLevel.error.length);
+byLevel.error.forEach((m) => console.log('•', m));
+header('Warnings', byLevel.warn.length);
+byLevel.warn.forEach((m) => console.log('•', m));
+
+process.exit(byLevel.error.length ? 1 : 0);
