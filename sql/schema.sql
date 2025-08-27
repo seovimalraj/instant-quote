@@ -352,10 +352,3 @@ create table if not exists public.custom_form_responses (
   data jsonb not null,
   created_at timestamptz default now()
 );
-
--- Profiles with role for admin gate
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'user',
-  created_at timestamp with time zone default now()
-);
