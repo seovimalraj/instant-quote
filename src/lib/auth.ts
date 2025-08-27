@@ -1,31 +1,18 @@
-import { redirect } from "next/navigation";
-import { createClient } from "./supabase/server";
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
 export async function requireAuth() {
   const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  return session;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/signin');
+  return user;
 }
 
 export async function requireAdmin() {
-  const session = await requireAuth();
+  const user = await requireAuth();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-
-  if (data?.role !== "admin" && data?.role !== "staff") {
-    redirect("/");
-  }
-
-  return session;
+  const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (data?.role !== 'admin') redirect('/');
+  return user;
 }
+
