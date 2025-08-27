@@ -1,18 +1,26 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 
 export function SignOutButton() {
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  };
+  const [busy, setBusy] = useState(false);
 
   return (
-    <button onClick={handleSignOut} className="text-sm text-gray-600 hover:underline">
+    <button
+      className="text-sm px-3 py-2 border rounded disabled:opacity-50"
+      disabled={busy}
+      onClick={async () => {
+        try {
+          setBusy(true);
+          await fetch('/api/auth/signout', { method: 'POST' });
+        } catch {
+          // ignore
+        } finally {
+          window.location.href = '/signin';
+        }
+      }}
+    >
       Sign out
     </button>
   );
 }
-
