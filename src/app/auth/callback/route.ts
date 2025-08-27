@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 const querySchema = z.object({
   code: z.string().optional(),
+  next: z.string().optional(),
 })
 
 export async function GET(request: Request) {
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   if (!parsed.success) {
     redirect('/login')
   }
-  const { code } = parsed.data
+  const { code, next } = parsed.data
 
   const supabase = await createClient()
 
@@ -47,5 +48,5 @@ export async function GET(request: Request) {
     redirect('/admin/dashboard')
   }
 
-  redirect('/dashboard')
+  redirect(next || '/dashboard')
 }
