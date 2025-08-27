@@ -49,6 +49,30 @@ npm run dev
 
 Set `DEMO_MODE=true` in any environment to run without external side effects.
 
+### CI and Vercel environment variables
+
+Because `/signup` is client-only, the public Supabase variables must be available at runtime. In Vercel (Production & Preview) add:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+If any server routes or pages use the Supabase server client, also configure:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY` (or `SUPABASE_SERVICE_ROLE` where appropriate)
+
+For GitHub Actions builds, pass the variables via secrets:
+
+```yaml
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+```
+
+Public keys are safe to expose to the browser; that's how Supabase works.
+
 ## Database
 
 Apply schema and policies to Supabase:
