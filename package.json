@@ -51,7 +51,7 @@
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^9.0.0",
-    "eslint-config-next": "15.5.0",
+    "eslint-config-next": "15.5.2",
     "glob": "^10.3.10",
     "jsdom": "latest",
     "postcss": "^8.4.31",
