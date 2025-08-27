@@ -1,5 +1,10 @@
-@import "./theme.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root { --bg: #f8fafc; --card: #ffffff; --muted: #64748b; }
+body { @apply bg-[var(--bg)] text-slate-900; }
+.card { @apply bg-[var(--card)] rounded-2xl border border-slate-200 shadow-soft; }
+.btn { @apply inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm; }
+.btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700; }
+.link { @apply text-brand-600 hover:underline; }
