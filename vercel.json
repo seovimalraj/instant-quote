@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "framework": "nextjs",
   "buildCommand": "npm run build",
   "installCommand": "npm ci --no-audit --prefer-offline",
-  "functions": {
-    "api/**": { "runtime": "nodejs22.x" },
-    "app/**": { "runtime": "nodejs22.x" }
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
   }
 }
