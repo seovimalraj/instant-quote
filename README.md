@@ -27,6 +27,8 @@ npm run dev
 | --- | :---: | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | ✓ | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | Supabase public anon key |
+| `SUPABASE_URL` | ✓ | Supabase project URL for server usage |
+| `SUPABASE_ANON_KEY` | ✓ | Supabase anon key for server usage |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✓ | Supabase service role key used for server and seeding |
 | `SUPABASE_DB_URL` | ✓ | Direct Postgres connection string for `db:apply` |
 | `STRIPE_SECRET_KEY` |  | Stripe secret key (payments currently stubbed) |
