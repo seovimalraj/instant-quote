@@ -1,27 +1,18 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookiesAsync } from '@/lib/next/cookies';
+export const runtime = 'nodejs';
+
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export async function createClient() {
-  const cookieStore = await cookiesAsync();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    return {
-      auth: { getUser: async () => ({ data: { user: null }, error: null }) },
-      from: () => ({ select: async () => ({ data: null, error: new Error("Supabase env missing") }) })
-    } as any;
-  }
-  return createServerClient(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options: any) {
-        cookieStore.set(name, value, options);
-      },
-      remove(name: string, options: any) {
-        cookieStore.set(name, "", { ...options, maxAge: 0 });
-      },
-    },
-  });
+  const store = await cookies();
+  const get = (name: string) => store.get(name)?.value;
+  const set = (name: string, value: string, options: any) => store.set({ name, value, ...options });
+  const remove = (name: string, options: any) => store.set({ name, value: '', ...options });
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get, set, remove } as any }
+  );
 }
+
