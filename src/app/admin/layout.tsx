@@ -1,7 +1,7 @@
 import '@/styles/globals.css';
 import { requireAdmin } from '@/lib/auth';
 import Link from 'next/link';
-import { SignOutButton } from '@/components/SignOutButton';
+import { SignOutButton } from '@/components/auth/SignOutButton';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
