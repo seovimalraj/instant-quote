@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import KpiCard from "@/components/admin/KpiCard";
 import ListFeed from "@/components/admin/ListFeed";
 import { getKpis, getFeeds } from "@/lib/metrics";

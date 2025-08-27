@@ -32,14 +32,21 @@
         "name": "next"
       }
     ],
-    "types": ["vitest/globals", "@playwright/test", "node"]
+    "types": [
+      "vitest/globals",
+      "@playwright/test",
+      "node"
+    ]
   },
   "include": [
     "next-env.d.ts",
     "src",
     "tests",
+    "tests/e2e/*.ts",
     "vitest.config.ts",
-    "tests/e2e/*.ts"
+    ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

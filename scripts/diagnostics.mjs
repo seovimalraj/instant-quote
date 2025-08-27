@@ -62,7 +62,7 @@ try {
   if (/http-proxy\s*=/.test(out) || /https-proxy\s*=/.test(out) || /proxy\s*=/.test(out)) {
     problems.push({ level: 'warn', msg: 'npm proxy settings detected (http-proxy/https-proxy). Consider removing to avoid warnings.' });
   }
-} catch {}
+} catch { /* ignore */ }
 
 // 7) Dependabot invalid config
 if (fs.existsSync('.github/dependabot.yml')) {

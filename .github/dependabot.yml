@@ -4,23 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-      day: saturday
-      time: "04:00"
-      timezone: "Asia/Kolkata"
     open-pull-requests-limit: 5
-    commit-message:
-      prefix: "deps(npm)"
-    allow:
-      - dependency-type: direct
-      - dependency-type: indirect
-
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
-      day: saturday
-      time: "04:10"
-      timezone: "Asia/Kolkata"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "deps(actions)"

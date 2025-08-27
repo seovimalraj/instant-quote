@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import DataTable from "@/components/admin/DataTable";
 import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";

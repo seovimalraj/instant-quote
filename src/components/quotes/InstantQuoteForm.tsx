@@ -122,7 +122,7 @@ export default function InstantQuoteForm({
       setRateCard(rateCardRes.data ?? null);
 
       const materialDefault =
-        (defaultMaterialId && materialsRes.data?.find((m) => m.id === defaultMaterialId)) ||
+        (defaultMaterialId && materialsRes.data?.find((m: any) => m.id === defaultMaterialId)) ||
         materialsRes.data?.[0];
       if (materialDefault) {
         setValue("material_id", materialDefault.id);
@@ -131,7 +131,7 @@ export default function InstantQuoteForm({
       }
 
       if (defaultToleranceId) {
-        const tol = tolerancesRes.data?.find((t) => t.id === defaultToleranceId);
+        const tol = tolerancesRes.data?.find((t: any) => t.id === defaultToleranceId);
         if (tol) setValue("tolerance_id", tol.id);
       }
 

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -172,7 +174,7 @@ export default async function QuoteDetailPage({ params }: Props) {
         </form>
       </div>
       <ul className="space-y-4">
-        {items?.map((item) => (
+        {items?.map((item: any) => (
           <li key={item.id} className="border p-4 rounded flex">
             <div className="flex-1 space-y-1 text-sm">
               <p>Part: {item.part_id}</p>
