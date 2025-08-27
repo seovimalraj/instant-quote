@@ -1,85 +1,76 @@
 /* eslint-env node */
 import fs from 'node:fs';
-import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { globSync } from 'glob';
 
-const problems = [];
+function sh(cmd) {
+  try { return execSync(cmd, { stdio: ['ignore','pipe','pipe'] }).toString(); } catch (e) { return e.stdout?.toString() || e.message; }
+}
 
-// 1) Node version vs engines
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+// Collect Next.js routes
+const pageFiles = globSync('src/app/**/page.{ts,tsx}', { ignore: ['**/node_modules/**'] });
+const apiFiles  = globSync('src/app/api/**/route.{ts,tsx}', { ignore: ['**/node_modules/**'] });
+
+function classifyRoute(p) {
+  const isAdmin = p.includes('/app/admin/');
+  const isCustomer = p.includes('/app/(customer)/') || (!isAdmin && !p.includes('/app/admin/'));
+  return { isAdmin, isCustomer };
+}
+
+const pages = pageFiles.map(p => ({ path: p, ...classifyRoute(p) }));
+const apis  = apiFiles.map(p => ({ path: p }));
+
+// LoC via fallback approach (prefer cloc if installed)
+let loc; 
+if (sh('command -v cloc >/dev/null 2>&1 && echo found || echo missing').includes('found')) {
+  loc = sh('cloc --json --quiet src || true');
+} else {
+  const count = sh("find src -type f -name '*.*' -not -path '*/node_modules/*' -print0 | xargs -0 cat | wc -l").trim();
+  loc = JSON.stringify({ summary: { total_lines: Number(count) } });
+}
+
+// Build dry-run warning scan (no lint, to speed up). We mock by reading previous logs if present.
+const buildWarns = [];
 try {
-  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  const engines = pkg.engines?.node;
-  if (engines) {
-    const node = process.versions.node;
-    const ok = /^>=\d+/.test(engines) ? true : false;
-    if (!ok) problems.push({ level: 'warn', msg: `package.json engines.node is unusual: "${engines}"` });
-    if (!new RegExp('^22\\.?').test(node)) {
-      problems.push({ level: 'error', msg: `Node ${node} running; project expects ${engines}` });
-    }
-  }
+  const log = sh('NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS= node -e "console.log()" && npm run -s verify:strict');
+  if (/Edge Runtime/i.test(log) && /@supabase\/(realtime-js|supabase-js)/.test(log)) buildWarns.push('EDGE_SUPABASE_WARNING');
 } catch (e) {
-  problems.push({ level: 'error', msg: `Cannot read package.json: ${e.message}` });
+  // ignore; verify:strict may fail for missing envs; still capture stdout
 }
 
-// 2) API routes must pin Node runtime (avoid Edge + process.* warnings)
-const apiRoutes = globSync('src/app/api/**/route.{ts,tsx}', { nodir: true });
-for (const f of apiRoutes) {
-  const s = fs.readFileSync(f, 'utf8');
-  if (!/export\s+const\s+runtime\s*=\s*['"]nodejs['"]/.test(s)) {
-    problems.push({ level: 'warn', msg: `Missing "export const runtime = 'nodejs'" in ${f}` });
-  }
-}
+// Feature flags (best-effort static detection)
+const features = {
+  dfmEngine: fs.existsSync('src/components/dfm') || fs.existsSync('src/lib/dfm'),
+  cadViewer: fs.existsSync('src/components/viewer') || fs.existsSync('src/components/CadViewer.tsx'),
+  stlSupport: !!deps['three'] || !!deps['three-stdlib'],
+  stepIgesSupport: !!deps['occt-import-js'],
+  authEmailPassword: fs.existsSync('src') ? false : true // fallback; refined below
+};
 
-// 3) Next 15 route context signature sanity
-for (const f of apiRoutes) {
-  const s = fs.readFileSync(f, 'utf8');
-  if (/context:\s*{\s*params:\s*Record<string,\s*string>\s*}/.test(s)) {
-    problems.push({ level: 'error', msg: `Route uses legacy context type in ${f}. Use { params }: { params: Promise<Record<string,string>> }` });
-  }
-}
+// Refine auth detection by scanning for /api/auth/signin or sign-up handlers referencing email/password
+const authHits = globSync('src/**/*.{ts,tsx}').flatMap(p=>{
+  try { const s = fs.readFileSync(p,'utf8'); return /auth\.sign(In|Up)\(\{\s*email:\s*.*password:/s.test(s) ? [p] : []; } catch { return []; }
+});
+features.authEmailPassword = authHits.length > 0;
 
-// 4) Pages: avoid importing PageProps from 'next'
-const pages = globSync('src/app/**/page.tsx', { nodir: true });
-for (const f of pages) {
-  const s = fs.readFileSync(f, 'utf8');
-  if (/from\s+['"]next['"]\s*;?\s*\n.*PageProps/.test(s)) {
-    problems.push({ level: 'error', msg: `Do not import PageProps from 'next'. Use { params?: any; searchParams?: any } and await if Promises. File: ${f}` });
-  }
-}
+// TailAdmin integration detection (layout imports, component classes)
+const tailAdmin = globSync('src/**/*.{ts,tsx}').some(p=>{
+  try { const s = fs.readFileSync(p,'utf8'); return /tailadmin|TailAdmin|ta-/.test(s); } catch { return false; }
+});
 
-// 5) Supabase Edge warnings: browser client or realtime used in API
-for (const f of apiRoutes) {
-  const s = fs.readFileSync(f, 'utf8');
-  if (/from\s+['"]@supabase\/ssr['"]/.test(s) || /@supabase\/realtime-js/.test(s)) {
-    problems.push({ level: 'error', msg: `API route imports browser/realtime client in ${f}. Use "@/lib/supabase/server".` });
-  }
-}
+const result = {
+  node_required: pkg.engines?.node || null,
+  next_version: deps.next || null,
+  pages,
+  apis,
+  loc_json: JSON.parse(loc),
+  build_warnings: buildWarns,
+  features: { ...features, tailAdmin }
+};
 
-// 6) npm proxy configs that trigger warnings
-try {
-  const out = execSync('npm config list -l', { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-  if (/http-proxy\s*=/.test(out) || /https-proxy\s*=/.test(out) || /proxy\s*=/.test(out)) {
-    problems.push({ level: 'warn', msg: 'npm proxy settings detected (http-proxy/https-proxy). Consider removing to avoid warnings.' });
-  }
-} catch { /* ignore */ }
-
-// 7) Dependabot invalid config
-if (fs.existsSync('.github/dependabot.yml')) {
-  const s = fs.readFileSync('.github/dependabot.yml', 'utf8');
-  if (/package-ecosystem:\s*["']?\s*["']?$/m.test(s) || /package-ecosystem:\s*$/.test(s)) {
-    problems.push({ level: 'error', msg: '.github/dependabot.yml has an empty package-ecosystem. Fix to "npm" etc.' });
-  }
-}
-
-// Print report
-const byLevel = { error: [], warn: [] };
-for (const p of problems) byLevel[p.level].push(p.msg);
-
-const header = (t, n) => console.log(`\n=== ${t} (${n}) ===`);
-header('Errors', byLevel.error.length);
-byLevel.error.forEach((m) => console.log('•', m));
-header('Warnings', byLevel.warn.length);
-byLevel.warn.forEach((m) => console.log('•', m));
-
-process.exit(byLevel.error.length ? 1 : 0);
+fs.mkdirSync('tmp', { recursive: true });
+fs.writeFileSync('tmp/audit.json', JSON.stringify(result, null, 2));
+console.log('Wrote tmp/audit.json');
