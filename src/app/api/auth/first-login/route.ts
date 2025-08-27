@@ -1,8 +1,9 @@
 export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
-import type { User } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+
+type User = { id: string; email: string | null }
 
 async function ensureProfile(user: User) {
   const supabaseAdmin = createAdminClient()
