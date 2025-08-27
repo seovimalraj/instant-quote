@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
+
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import InstantQuoteForm from "@/components/quotes/InstantQuoteForm";
 import PriceExplainerModal, { BreakdownJson } from "@/components/quotes/PriceExplainerModal";
 import Badges from "@/components/quotes/Badges";
@@ -11,6 +11,14 @@ import { formatCurrency } from "@/components/quotes/BreakdownRow";
 import { LeadTime, normalizeLeadTime } from "@/lib/uiTypes";
 
 export default function InstantQuotePage() {
+  return (
+    <Suspense>
+      <InstantQuotePageContent />
+    </Suspense>
+  );
+}
+
+function InstantQuotePageContent() {
   const router = useRouter();
   const sp = useSearchParams();
 

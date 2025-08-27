@@ -6,8 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
-  const next = new URLSearchParams(window.location.search).get('next')
-  const redirectTo = `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`
+
+  const getRedirectTo = () => {
+    const next = new URLSearchParams(window.location.search).get('next')
+    return `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`
+  }
 
   const handleEmailSignIn = async (e: FormEvent) => {
     e.preventDefault()
@@ -16,7 +19,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: getRedirectTo(),
         shouldCreateUser: false,
       },
     })
@@ -29,7 +32,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo,
+        redirectTo: getRedirectTo(),
       },
     })
   }
