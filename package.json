@@ -45,6 +45,8 @@
     "@eslint/config-array": "latest",
     "@eslint/object-schema": "latest",
     "@playwright/test": "latest",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/node": "latest",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.17",
