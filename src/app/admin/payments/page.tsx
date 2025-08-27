@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +17,7 @@ export default async function PaymentsAdminPage() {
     <div className="max-w-4xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Payments</h1>
       <ul className="space-y-2">
-        {payments?.map((p) => (
+        {payments?.map((p: any) => (
           <li key={p.id} className="border p-4 rounded">
             <p className="text-sm">{p.provider}</p>
             <p className="text-sm">Amount: {p.amount}</p>

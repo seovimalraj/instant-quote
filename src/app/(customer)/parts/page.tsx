@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,7 +46,7 @@ export default async function PartsPage({
     <div className="max-w-4xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Parts</h1>
       <ul className="space-y-2">
-        {parts?.map((p) => (
+        {parts?.map((p: any) => (
           <li key={p.id} className="border p-4 rounded">
             <a href={`/part/${p.id}`} className="text-blue-600 underline">
               {p.name || p.id}

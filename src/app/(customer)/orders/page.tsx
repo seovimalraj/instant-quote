@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,7 +36,7 @@ export default async function OrdersPage({
     <div className="max-w-4xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">Orders</h1>
       <ul className="space-y-2">
-        {orders?.map((o) => (
+        {orders?.map((o: any) => (
           <li key={o.id} className="border p-4 rounded">
             <a href={`/order/${o.id}`} className="text-blue-600 underline">{o.id}</a>
             <p className="text-sm">Status: {o.status}</p>

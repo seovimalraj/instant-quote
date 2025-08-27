@@ -146,11 +146,11 @@ export async function POST(req: NextRequest) {
       material_rate_multiplier: a.alloy_rate_multiplier,
       is_active: a.is_active,
     })),
-  ].filter((l) => l.is_active !== false);
+  ].filter((l: any) => l.is_active !== false);
 
   const finishLinks = (mf ?? [])
-    .filter((l) => l.is_active !== false)
-    .map((l) => ({
+    .filter((l: any) => l.is_active !== false)
+    .map((l: any) => ({
       machine_id: l.machine_id,
       finish_id: l.finish_id,
       finish_rate_multiplier: l.finish_rate_multiplier,

@@ -24,7 +24,7 @@ export default function ActivityLog({ quoteId }: Props) {
       .select("id,type,created_at,data")
       .eq("quote_id", quoteId)
       .order("created_at", { ascending: true })
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         setActivities(data || []);
       });
   }, [quoteId]);

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +17,7 @@ export default async function AdminPartsPage() {
     <div className="max-w-4xl mx-auto py-10">
       <h1 className="text-2xl font-semibold mb-6">All Parts</h1>
       <ul className="space-y-2">
-        {parts?.map((p) => (
+        {parts?.map((p: any) => (
           <li key={p.id} className="border p-4 rounded">
             <p className="text-sm">{p.file_name}</p>
             <p className="text-xs text-gray-500">Owner: {p.owner_id}</p>

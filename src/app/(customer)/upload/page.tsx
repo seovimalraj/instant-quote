@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import PartDropzone from "@/components/upload/PartDropzone";
 
 export default function UploadPage() {

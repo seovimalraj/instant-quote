@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +31,7 @@ export default async function AbandonedAdminPage() {
     <div className="max-w-4xl mx-auto py-10 space-y-6">
       <h1 className="text-2xl font-semibold">Abandoned Quotes</h1>
       <ul className="space-y-4">
-        {abandoned?.map((a) => (
+        {abandoned?.map((a: any) => (
           <li key={a.id} className="border p-4 rounded">
             <p className="text-sm">{a.email}</p>
             <form action={convert}>
