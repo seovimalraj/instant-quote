@@ -14,7 +14,7 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run typecheck && npm run test:unit && npm run build",
-    "verify:strict": "npm run lint && npm run typecheck && npm run test:unit && next build --no-lint --show-error-details",
+    "verify:strict": "npm run lint && npm run typecheck && npm run test:unit && next build --no-lint",
     "doctor": "node scripts/diagnostics.mjs",
     "db:apply": "psql \"$SUPABASE_DB_URL\" -f sql/schema.sql -f sql/policies.sql",
     "db:seed": "tsx db/seed.ts",
@@ -50,7 +50,7 @@
     "@types/react-dom": "^18.2.17",
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.16",
-    "eslint": "^8.57.0",
+    "eslint": "^9.0.0",
     "eslint-config-next": "15.5.0",
     "glob": "^10.3.10",
     "jsdom": "latest",
@@ -68,5 +68,6 @@
   },
   "overrides": {
     "cookie": "^0.7.2"
-  }
+  },
+  "next": "15.5.0"
 }
