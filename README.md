@@ -85,6 +85,24 @@ vercel env pull .env.local
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 ```
 
+Because `/signup` runs entirely on the client, the public Supabase variables must
+be available at runtime. In Vercel, add `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` in **Project → Settings → Environment Variables**
+for both Production and Preview deployments. If any server routes or pages use
+the server client, also configure `SUPABASE_URL` and `SUPABASE_ANON_KEY` (or
+`SUPABASE_SERVICE_ROLE_KEY` when appropriate). Public keys are safe to expose to
+the browser; that's how Supabase works.
+
+If building in GitHub Actions, expose the same values via secrets:
+
+```yaml
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+```
+
 ## Known Limitations and TODOs
 
 - STEP/IGES viewer is a placeholder; real CAD visualization is not implemented.
