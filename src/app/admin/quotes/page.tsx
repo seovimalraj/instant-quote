@@ -3,6 +3,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -67,9 +68,9 @@ export default function AdminQuotesPage() {
       <ul className="space-y-2">
         {quotes.map((q) => (
           <li key={q.id} className="border p-4 rounded">
-            <a href={`/admin/quotes/${q.id}`} className="text-blue-600 underline">
+            <Link href={`/admin/quotes/${q.id}`} className="text-blue-600 underline">
               {q.id}
-            </a>
+            </Link>
             <p className="text-sm">
               Status: {q.status}
               {newIds.has(q.id) && (

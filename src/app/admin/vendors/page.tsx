@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const runtime = "nodejs";
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,12 +40,12 @@ export default async function VendorsAdminPage() {
       <ul className="space-y-4">
         {vendors?.map((v: any) => (
           <li key={v.id} className="border p-4 rounded">
-            <a
+            <Link
               href={`/admin/vendors/${v.id}`}
               className="text-blue-600 underline"
             >
               {v.email || v.full_name || v.id}
-            </a>
+            </Link>
           </li>
         ))}
         {!vendors?.length && (
