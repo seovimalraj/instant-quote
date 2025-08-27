@@ -1,5 +1,8 @@
 "use client";
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -28,7 +31,7 @@ export default function AdminQuotesPage() {
 
     const channel = supabase
       .channel("quotes")
-      .on("broadcast", { event: "status" }, (payload) => {
+      .on("broadcast", { event: "status" }, (payload: any) => {
         const { id, status } = payload.payload as { id: string; status: string };
         setQuotes((prev) => {
           const existing = prev.find((q) => q.id === id);

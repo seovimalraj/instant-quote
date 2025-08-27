@@ -1,5 +1,9 @@
-/* eslint-disable react/no-unescaped-entities */
 "use client";
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+// Revalidation not supported in client components
+/* eslint-disable react/no-unescaped-entities */
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";

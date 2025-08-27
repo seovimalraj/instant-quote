@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +28,7 @@ export default async function OrderDetailPage({ params }: Props) {
       <p>Status: {order?.status}</p>
       <p>Total: {order?.total}</p>
       <ul className="space-y-4">
-        {items?.map((item) => (
+        {items?.map((item: any) => (
           <li key={item.id} className="border p-4 rounded">
             <p className="text-sm">Part: {item.part_id}</p>
             <p className="text-sm">Quantity: {item.quantity}</p>
